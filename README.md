@@ -3,26 +3,25 @@
 **The frozen OpenAPI contract for [Bifrost](https://github.com/brandonrc/bifrost),
 plus generated client SDKs. Generated — do not hand-edit.**
 
-Bifrost is a Go port of the mobula control plane. Its API surface starts as a
-one-time freeze of mobula's spec rather than an ongoing bot-pushed feed —
-`openapi.json` in this repo is a point-in-time snapshot, not a live mirror.
-Once Bifrost's Go server (`github.com/brandonrc/bifrost`) has its own
-generator producing this file, this repo's role switches to hosting that
-generated artifact and its SDKs, the same pattern mobula-api uses for mobula.
+Bifrost's API surface is **contract-first**: this repo holds the frozen v1
+contract, and the Go server (`github.com/brandonrc/bifrost`) generates its
+handler interfaces from this file — so the spec and the server cannot drift
+apart. `openapi.json` here is the authoritative point-in-time artifact, not
+a live mirror; when the server later takes over emitting this file, this
+repo's role switches to hosting that generated artifact and its SDKs.
 
-## Freeze provenance
+## Contract v1
 
-- **Source:** `mobula@84d12bb` (branch `fix/openapi-complete-registry`),
-  `openapi.json`, OpenAPI 3.1.0, emitted by utoipa v5.
-- **Verified complete:** 47 operations across 36 paths — no operations
-  silently dropped (see `docs/adr/0002-openapi-codegen-result.md` in the
-  `bifrost` repo for the independent oapi-codegen spot-check that confirms
-  the same counts against the strict-server interface).
+- **Shape:** OpenAPI 3.1.0, 47 operations across 36 paths, completeness
+  guarded by an exhaustive operation-set test on the producing side (see
+  `docs/adr/0002-openapi-codegen-result.md` in the `bifrost` repo for the
+  independent oapi-codegen check confirming the same counts against the
+  generated strict-server interface).
 - **Normalization:** the frozen file was run through `jq -S .` once for
   stable, deterministic key ordering:
 
   ```
-  jq -S . < mobula/openapi.json > openapi.json
+  jq -S . < openapi.source.json > openapi.json
   ```
 
 - **YAML companion:** `openapi.yaml` is the same spec re-serialized from the
@@ -66,12 +65,6 @@ package (including package.json/Cargo.toml/pyproject) from `config.yaml`;
 drop `.mustache` files in `templates/` to override specific generated files.
 Nothing generated is committed.
 
-This layout, plus the pipeline files (`redocly.yaml`, `.spectral.yaml`,
-`sdk/`, `.github/workflows/`), was bootstrapped from
-[`mobula-api`](https://github.com/brandonrc/mobula-api) and renamed
-`mobula` → `bifrost` throughout (package names, workflow env, the
-`redocly.yaml` API id).
-
 ## SDK packages
 
 | Language   | Package                     | Generator config              |
@@ -107,8 +100,8 @@ under `sdk/<lang>/`), on every push to `main` that touches `openapi.json`,
 
 ## TODO
 
-- Swap `bifrost-ui` from whatever client it uses today to
-  `@brandonrc/bifrost-client` once the first SDK publish lands.
-- Once Bifrost's Go server generates its own `openapi.json` (rather than
-  consuming this one-time freeze of mobula's), wire that generation into
-  this repo's CI the way `mobula-api` consumes mobula's bot-pushed spec.
+- Swap `bifrost-ui` to `@brandonrc/bifrost-client` once the first SDK
+  publish lands.
+- Once the Go server emits its own `openapi.json`, wire a spec-sync workflow
+  so pushes to the server repo update this contract automatically (with a
+  diff-gated commit, failing red when the sync can't run).
