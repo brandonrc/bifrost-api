@@ -1,0 +1,148 @@
+name: Generate & publish SDKs
+
+# Generates the SDKs from openapi.json with openapi-generator (Mustache
+# templates; per-language config under sdk/<lang>/config.yaml, overrides in
+# sdk/<lang>/templates/) and publishes them. Nothing generated is committed.
+# Dev versioning: 0.1.<run_number>.
+#
+# Publish steps are secret-gated. A missing secret is a hard failure (exit 1)
+# on a main-branch push — silent skips are a defect (SPEC.md). Pushing to a
+# branch other than main (or workflow_dispatch off main) still builds without
+# publishing, since secrets are commonly unavailable outside main-branch CI.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "openapi.json"
+      - "sdk/**"
+      - ".github/workflows/generate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  OPENAPI_GENERATOR_VERSION: v7.12.0
+
+jobs:
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@brandonrc"
+      - name: Generate TS SDK
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/local" \
+            openapitools/openapi-generator-cli:${OPENAPI_GENERATOR_VERSION} generate --skip-validate-spec \
+            -i /local/openapi.json -g typescript-fetch \
+            -c /local/sdk/typescript/config.yaml \
+            -t /local/sdk/typescript/templates \
+            -o /local/build/typescript \
+            --additional-properties=npmVersion=0.1.${GITHUB_RUN_NUMBER}
+      - name: SBOM (CycloneDX)
+        uses: anchore/sbom-action@v0
+        with:
+          path: build/typescript
+          format: cyclonedx-json
+          output-file: sbom-typescript-cyclonedx.json
+      - name: Publish to GitHub Packages
+        working-directory: build/typescript
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ] && [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::GITHUB_TOKEN not available — cannot publish @brandonrc/bifrost-client from a main-branch push." >&2
+            exit 1
+          fi
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::notice::NODE_AUTH_TOKEN not set (non-main run) — built but not published."
+            exit 0
+          fi
+          npm install --no-audit --no-fund
+          npm publish
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Generate Rust SDK
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/local" \
+            openapitools/openapi-generator-cli:${OPENAPI_GENERATOR_VERSION} generate --skip-validate-spec \
+            -i /local/openapi.json -g rust \
+            -c /local/sdk/rust/config.yaml \
+            -t /local/sdk/rust/templates \
+            -o /local/build/rust \
+            --additional-properties=packageVersion=0.1.${GITHUB_RUN_NUMBER}
+      - name: Build (validate)
+        working-directory: build/rust
+        run: cargo build
+      - name: SBOM (CycloneDX)
+        uses: anchore/sbom-action@v0
+        with:
+          path: build/rust
+          format: cyclonedx-json
+          output-file: sbom-rust-cyclonedx.json
+      - name: Publish to crates.io
+        working-directory: build/rust
+        env:
+          CARGO_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          if [ -z "$CARGO_TOKEN" ]; then
+            if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+              echo "::error::CARGO_REGISTRY_TOKEN not set — cannot publish bifrost-client from a main-branch push." >&2
+              exit 1
+            fi
+            echo "::notice::CARGO_REGISTRY_TOKEN not set (non-main run) — built but not published."
+            exit 0
+          fi
+          cargo publish --allow-dirty --token "$CARGO_TOKEN"
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Generate Python SDK
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/local" \
+            openapitools/openapi-generator-cli:${OPENAPI_GENERATOR_VERSION} generate --skip-validate-spec \
+            -i /local/openapi.json -g python \
+            -c /local/sdk/python/config.yaml \
+            -t /local/sdk/python/templates \
+            -o /local/build/python \
+            --additional-properties=packageVersion=0.1.${GITHUB_RUN_NUMBER}
+      - name: Build wheel (validate)
+        working-directory: build/python
+        run: |
+          pip install --quiet build
+          python -m build
+      - name: SBOM (CycloneDX)
+        uses: anchore/sbom-action@v0
+        with:
+          path: build/python
+          format: cyclonedx-json
+          output-file: sbom-python-cyclonedx.json
+      - name: Publish to PyPI
+        working-directory: build/python
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          if [ -z "$PYPI_TOKEN" ]; then
+            if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+              echo "::error::PYPI_API_TOKEN not set — cannot publish bifrost_client from a main-branch push." >&2
+              exit 1
+            fi
+            echo "::notice::PYPI_API_TOKEN not set (non-main run) — built but not published."
+            exit 0
+          fi
+          pip install --quiet twine
+          twine upload -u __token__ -p "$PYPI_TOKEN" dist/*

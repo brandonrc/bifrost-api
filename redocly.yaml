@@ -1,0 +1,5 @@
+apis:
+  bifrost@v1:
+    root: openapi.json
+extends:
+  - recommended

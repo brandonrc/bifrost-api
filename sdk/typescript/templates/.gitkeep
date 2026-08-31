@@ -1,0 +1,4 @@
+# Drop openapi-generator .mustache overrides here to customize this SDK's
+# generated output. Files present override the generator's built-in
+# templates of the same name; everything else falls back to defaults.
+# The generate workflow passes this dir via `-t`.

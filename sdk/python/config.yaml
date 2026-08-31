@@ -1,0 +1,7 @@
+# openapi-generator config for the Python SDK.
+generatorName: python
+additionalProperties:
+  packageName: "bifrost_client"
+  projectName: "bifrost-client"
+  packageVersion: "0.1.0"
+  library: urllib3

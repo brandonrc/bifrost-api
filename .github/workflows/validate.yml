@@ -1,0 +1,30 @@
+name: Validate
+
+# Lints the spec on every push/PR. openapi.json is a frozen artifact (see
+# README for provenance) — this guards the SDK generators and any local
+# edits, and gives the repo a green/red signal on spec quality (Spectral +
+# Redocly).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint & validate OpenAPI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install linters
+        run: npm install -g @stoplight/spectral-cli @redocly/cli
+      - name: Spectral lint
+        run: spectral lint openapi.json --fail-severity error
+      - name: Redocly lint
+        continue-on-error: true
+        run: redocly lint openapi.json
+      - name: Verify bundleable
+        run: redocly bundle openapi.json -o /tmp/bundled.json
