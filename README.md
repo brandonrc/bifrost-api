@@ -65,12 +65,11 @@ openapi.yaml          # same spec, YAML — for tools that prefer it
 redocly.yaml          # Redocly lint/docs config
 sdk/
   typescript/         # config.yaml + templates/  (openapi-generator: typescript-fetch)
-  rust/               # config.yaml + templates/  (openapi-generator: rust/reqwest)
   python/              # config.yaml + templates/  (openapi-generator: python)
 ```
 
 Each `sdk/<lang>/` is **config-only**: openapi-generator emits the whole
-package (including package.json/Cargo.toml/pyproject) from `config.yaml`;
+package (including package.json/pyproject) from `config.yaml`;
 drop `.mustache` files in `templates/` to override specific generated files.
 Nothing generated is committed.
 
@@ -80,7 +79,6 @@ Nothing generated is committed.
 |------------|------------------------------|--------------------------------|
 | TypeScript | `@brandonrc/bifrost-client`  | `sdk/typescript/config.yaml`   |
 | Python     | `bifrost_client`             | `sdk/python/config.yaml`       |
-| Rust       | `bifrost-client`              | `sdk/rust/config.yaml`         |
 
 SDKs are generated in CI (`.github/workflows/generate.yml`) with
 **openapi-generator v7.12.0** (Mustache templates, one config per language
@@ -90,14 +88,13 @@ under `sdk/<lang>/`), on every push to `main` that touches `openapi.json`,
 
 - TypeScript publishes to GitHub Packages npm (`@brandonrc` scope) on every
   qualifying `main` push.
-- Rust and Python build and validate (`cargo build`, `python -m build`) on
-  every run, but only *publish* (to crates.io / PyPI) when
-  `CARGO_REGISTRY_TOKEN` / `PYPI_API_TOKEN` are set. On a `main`-branch push,
-  a missing publish secret is a **hard failure** (`exit 1`), not a silent
-  skip — a `main` push is expected to be publishable, so a missing secret
-  there indicates a misconfigured repo rather than an intentional dry run.
-  Non-`main` runs (e.g. `workflow_dispatch` off a branch) still build without
-  publishing.
+- Python builds and validates (`python -m build`) on every run, but only
+  *publishes* (to PyPI) when `PYPI_API_TOKEN` is set. On a `main`-branch
+  push, a missing publish secret is a **hard failure** (`exit 1`), not a
+  silent skip — a `main` push is expected to be publishable, so a missing
+  secret there indicates a misconfigured repo rather than an intentional
+  dry run. Non-`main` runs (e.g. `workflow_dispatch` off a branch) still
+  build without publishing.
 - Each SDK build also produces a CycloneDX SBOM
   (`anchore/sbom-action@v0`) as a workflow artifact.
 

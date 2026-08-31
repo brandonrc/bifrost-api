@@ -1,7 +1,0 @@
-# openapi-generator config for the Rust SDK (reqwest-based async client).
-generatorName: rust
-additionalProperties:
-  packageName: "bifrost-client"
-  packageVersion: "0.1.0"
-  library: reqwest
-  supportAsync: true
