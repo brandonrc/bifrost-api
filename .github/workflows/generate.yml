@@ -67,6 +67,11 @@ jobs:
           npm publish
 
   rust:
+    # Gated to workflow_dispatch only: CARGO_REGISTRY_TOKEN is unprovisioned,
+    # so a push-triggered run would hard-fail on every main push (see the
+    # fail-red publish step below). Restore `push` to this job's trigger
+    # once CARGO_REGISTRY_TOKEN exists.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -105,6 +110,11 @@ jobs:
           cargo publish --allow-dirty --token "$CARGO_TOKEN"
 
   python:
+    # Gated to workflow_dispatch only: PYPI_API_TOKEN is unprovisioned, so a
+    # push-triggered run would hard-fail on every main push (see the
+    # fail-red publish step below). Restore `push` to this job's trigger
+    # once PYPI_API_TOKEN exists.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
