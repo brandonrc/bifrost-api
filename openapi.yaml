@@ -103,7 +103,7 @@ components:
       type: object
     AuditDecision:
       description: |-
-        Whether Mobula allowed or refused the thing the event describes.
+        Whether Bifrost allowed or refused the thing the event describes.
         Serialized snake_case (`allow` / `deny`).
       enum:
       - allow
@@ -114,9 +114,9 @@ components:
         One audit-trail row (api-v1.md §5.9). Fields not applicable to the
         emitting site are `None` (serialized `null`); `granted_roles` is empty.
 
-        Decision policy (mobula-api `audit` module): `deny` rows are emitted at
+        Decision policy (the audit subsystem): `deny` rows are emitted at
         the point of refusal (authn failures, authz denials, quota denials);
-        gateway per-request rows are always `allow` — a request Mobula refuses
+        gateway per-request rows are always `allow` — a request Bifrost refuses
         never reaches the gateway, so its `deny` row comes from the refuser.
       properties:
         action:
@@ -213,7 +213,7 @@ components:
     AuditRequired:
       description: |-
         The (verb, target) permission an authorization decision was checked
-        against — mirrors `mobula_auth::{PermissionType, Target}` as lowercase
+        against — mirrors the auth subsystem's permission/target vocabulary as lowercase
         strings (`"write"`, `"cluster"`) so core stays free of auth types.
         Present only on authz denials.
       properties:
@@ -565,7 +565,7 @@ components:
             Set control-plane-side from the request identity (never trusted from
             the client body); `None` for clusters created without an owner (e.g.
             admin/service paths). When set it is stamped as the
-            `mobula.dev/owner` label on the RayCluster and its pods, and drives
+            `bifrost.dev/owner` label on the RayCluster and its pods, and drives
             the per-owner Ray-client (`:10001`) ingress NetworkPolicy so only the
             owner's notebook pod can reach the cluster. `#[serde(default)]` keeps
             specs persisted before this field deserializable (they parse as
@@ -815,7 +815,7 @@ components:
         isolation — acceptable within one tenant, never across tenants. MIG is
         hardware partitioning and whole-GPU allocation needs no sharing at all,
         so both are isolation-safe. The tenant-isolation rule itself is enforced
-        by `mobula-policy::gpu` at admission time; this field is the per-pool
+        by the policy package's GPU admission logic at admission time; this field is the per-pool
         knob it evaluates.
       enum:
       - whole-gpu
@@ -879,8 +879,8 @@ components:
       description: |-
         A local user's role (ADR-0011: roles are a column on the user, resolved
         per request — no claim staleness). Stored as TEXT in `local_users.role`;
-        the vocabulary mirrors `mobula_auth::Role` (kept as a separate enum so
-        core never depends on the auth crate).
+        the vocabulary mirrors the auth subsystem's Role type (kept as a separate enum so
+        core never depends on the auth package).
       enum:
       - viewer
       - developer
@@ -1120,7 +1120,7 @@ components:
               default (`[gpu] default_sharing` in the policy file, itself
               defaulting to `whole-gpu`). A pool shared by more than one project
               may not resolve to `time-slice` — enforced at admission by
-              `mobula-policy::gpu`, not here (core validates shape; tenancy is
+              the policy package's GPU admission logic, not here (core validates shape; tenancy is
               known only at the API edge, where allocations live).
         name:
           type: string
@@ -1286,7 +1286,7 @@ components:
       type: object
     RayJobSummary:
       description: |-
-        A Ray job normalized to a stable Mobula shape (api-v1.md §5.6). Every
+        A Ray job normalized to a stable Bifrost shape (api-v1.md §5.6). Every
         field is optional: Ray's own records vary by version and by whether the
         job has started/finished. `status` is Ray's vocabulary verbatim
         (`PENDING | RUNNING | SUCCEEDED | FAILED | STOPPED`) — not snake_cased,
@@ -1416,7 +1416,7 @@ components:
     RoleMappingsView:
       description: |-
         Group→role mappings from the OIDC auth config; shape mirrors
-        `mobula_auth::RoleMappings` (a wire twin so `mobula-auth` stays free of
+        the auth subsystem's role-mapping type (a wire twin so the auth package stays free of
         serialization/api deps).
       properties:
         admin:
@@ -1487,7 +1487,7 @@ components:
         serve_config_v2:
           description: |-
             The Serve application config (KubeRay `serveConfigV2`), passed
-            through verbatim as a YAML string — Mobula does not interpret it.
+            through verbatim as a YAML string — Bifrost does not interpret it.
           type: string
         upgrade:
           "$ref": "#/components/schemas/UpgradeStrategy"
@@ -1685,8 +1685,8 @@ components:
     VersionInfo:
       properties:
         name:
-          description: Always "mobula".
-          example: mobula
+          description: Always "bifrost".
+          example: bifrost
           type: string
         version:
           description: Control-plane semver.
@@ -1774,10 +1774,10 @@ info:
   description: 'FOSS control plane for Ray clusters. All endpoints take a Bearer JWT
     (OIDC). Note: the Ray Jobs API is NOT documented here — it is served by hostname,
     each registered cluster''s hostname proxying Ray''s own /api/jobs/ surface through
-    the federating gateway. This spec covers Mobula''s own control-plane routes.'
+    the federating gateway. This spec covers Bifrost''s own control-plane routes.'
   license:
     name: Apache-2.0
-  title: Mobula
+  title: Bifrost
   version: 0.0.1
 openapi: 3.1.0
 paths:

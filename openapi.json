@@ -126,7 +126,7 @@
         "type": "object"
       },
       "AuditDecision": {
-        "description": "Whether Mobula allowed or refused the thing the event describes.\nSerialized snake_case (`allow` / `deny`).",
+        "description": "Whether Bifrost allowed or refused the thing the event describes.\nSerialized snake_case (`allow` / `deny`).",
         "enum": [
           "allow",
           "deny"
@@ -134,7 +134,7 @@
         "type": "string"
       },
       "AuditEvent": {
-        "description": "One audit-trail row (api-v1.md §5.9). Fields not applicable to the\nemitting site are `None` (serialized `null`); `granted_roles` is empty.\n\nDecision policy (mobula-api `audit` module): `deny` rows are emitted at\nthe point of refusal (authn failures, authz denials, quota denials);\ngateway per-request rows are always `allow` — a request Mobula refuses\nnever reaches the gateway, so its `deny` row comes from the refuser.",
+        "description": "One audit-trail row (api-v1.md §5.9). Fields not applicable to the\nemitting site are `None` (serialized `null`); `granted_roles` is empty.\n\nDecision policy (the audit subsystem): `deny` rows are emitted at\nthe point of refusal (authn failures, authz denials, quota denials);\ngateway per-request rows are always `allow` — a request Bifrost refuses\nnever reaches the gateway, so its `deny` row comes from the refuser.",
         "properties": {
           "action": {
             "description": "Control-plane mutation (`create_cluster`, `delete_pool`, …);\n`null` on gateway rows.",
@@ -255,7 +255,7 @@
         "type": "object"
       },
       "AuditRequired": {
-        "description": "The (verb, target) permission an authorization decision was checked\nagainst — mirrors `mobula_auth::{PermissionType, Target}` as lowercase\nstrings (`\"write\"`, `\"cluster\"`) so core stays free of auth types.\nPresent only on authz denials.",
+        "description": "The (verb, target) permission an authorization decision was checked\nagainst — mirrors the auth subsystem's permission/target vocabulary as lowercase\nstrings (`\"write\"`, `\"cluster\"`) so core stays free of auth types.\nPresent only on authz denials.",
         "properties": {
           "action": {
             "description": "e.g. \"read\" | \"write\" | \"delete\" | \"admin\".",
@@ -648,7 +648,7 @@
             "type": "string"
           },
           "owner": {
-            "description": "The authenticated owner of this cluster (tier-2 owned session\nclusters): the human identity that requested it — a\n`preferred_username` when the OIDC token carries one, else the `sub`.\nSet control-plane-side from the request identity (never trusted from\nthe client body); `None` for clusters created without an owner (e.g.\nadmin/service paths). When set it is stamped as the\n`mobula.dev/owner` label on the RayCluster and its pods, and drives\nthe per-owner Ray-client (`:10001`) ingress NetworkPolicy so only the\nowner's notebook pod can reach the cluster. `#[serde(default)]` keeps\nspecs persisted before this field deserializable (they parse as\n`None`).",
+            "description": "The authenticated owner of this cluster (tier-2 owned session\nclusters): the human identity that requested it — a\n`preferred_username` when the OIDC token carries one, else the `sub`.\nSet control-plane-side from the request identity (never trusted from\nthe client body); `None` for clusters created without an owner (e.g.\nadmin/service paths). When set it is stamped as the\n`bifrost.dev/owner` label on the RayCluster and its pods, and drives\nthe per-owner Ray-client (`:10001`) ingress NetworkPolicy so only the\nowner's notebook pod can reach the cluster. `#[serde(default)]` keeps\nspecs persisted before this field deserializable (they parse as\n`None`).",
             "type": [
               "string",
               "null"
@@ -939,7 +939,7 @@
         "type": "object"
       },
       "GpuSharing": {
-        "description": "How a pool's GPUs may be shared between workloads (#58).\n\nNVIDIA GPU time-slicing (and fractional `nvidia.com/gpu` requests via the\ndevice plugin) shares one GPU's SMs across processes with no hardware\nisolation — acceptable within one tenant, never across tenants. MIG is\nhardware partitioning and whole-GPU allocation needs no sharing at all,\nso both are isolation-safe. The tenant-isolation rule itself is enforced\nby `mobula-policy::gpu` at admission time; this field is the per-pool\nknob it evaluates.",
+        "description": "How a pool's GPUs may be shared between workloads (#58).\n\nNVIDIA GPU time-slicing (and fractional `nvidia.com/gpu` requests via the\ndevice plugin) shares one GPU's SMs across processes with no hardware\nisolation — acceptable within one tenant, never across tenants. MIG is\nhardware partitioning and whole-GPU allocation needs no sharing at all,\nso both are isolation-safe. The tenant-isolation rule itself is enforced\nby the policy package's GPU admission logic at admission time; this field is the per-pool\nknob it evaluates.",
         "enum": [
           "whole-gpu",
           "mig",
@@ -1021,7 +1021,7 @@
         "type": "object"
       },
       "LocalRole": {
-        "description": "A local user's role (ADR-0011: roles are a column on the user, resolved\nper request — no claim staleness). Stored as TEXT in `local_users.role`;\nthe vocabulary mirrors `mobula_auth::Role` (kept as a separate enum so\ncore never depends on the auth crate).",
+        "description": "A local user's role (ADR-0011: roles are a column on the user, resolved\nper request — no claim staleness). Stored as TEXT in `local_users.role`;\nthe vocabulary mirrors the auth subsystem's Role type (kept as a separate enum so\ncore never depends on the auth package).",
         "enum": [
           "viewer",
           "developer",
@@ -1303,7 +1303,7 @@
               },
               {
                 "$ref": "#/components/schemas/GpuSharing",
-                "description": "GPU sharing mode for this pool (#58). `None` inherits the platform\ndefault (`[gpu] default_sharing` in the policy file, itself\ndefaulting to `whole-gpu`). A pool shared by more than one project\nmay not resolve to `time-slice` — enforced at admission by\n`mobula-policy::gpu`, not here (core validates shape; tenancy is\nknown only at the API edge, where allocations live)."
+                "description": "GPU sharing mode for this pool (#58). `None` inherits the platform\ndefault (`[gpu] default_sharing` in the policy file, itself\ndefaulting to `whole-gpu`). A pool shared by more than one project\nmay not resolve to `time-slice` — enforced at admission by\nthe policy package's GPU admission logic, not here (core validates shape; tenancy is\nknown only at the API edge, where allocations live)."
               }
             ]
           },
@@ -1515,7 +1515,7 @@
         "type": "object"
       },
       "RayJobSummary": {
-        "description": "A Ray job normalized to a stable Mobula shape (api-v1.md §5.6). Every\nfield is optional: Ray's own records vary by version and by whether the\njob has started/finished. `status` is Ray's vocabulary verbatim\n(`PENDING | RUNNING | SUCCEEDED | FAILED | STOPPED`) — not snake_cased,\nper §5.7. `start_time`/`end_time` are Ray's unix-millis timestamps.",
+        "description": "A Ray job normalized to a stable Bifrost shape (api-v1.md §5.6). Every\nfield is optional: Ray's own records vary by version and by whether the\njob has started/finished. `status` is Ray's vocabulary verbatim\n(`PENDING | RUNNING | SUCCEEDED | FAILED | STOPPED`) — not snake_cased,\nper §5.7. `start_time`/`end_time` are Ray's unix-millis timestamps.",
         "properties": {
           "end_time": {
             "description": "Ray's `end_time` (unix millis); `None` while the job runs.",
@@ -1672,7 +1672,7 @@
         "type": "object"
       },
       "RoleMappingsView": {
-        "description": "Group→role mappings from the OIDC auth config; shape mirrors\n`mobula_auth::RoleMappings` (a wire twin so `mobula-auth` stays free of\nserialization/api deps).",
+        "description": "Group→role mappings from the OIDC auth config; shape mirrors\nthe auth subsystem's role-mapping type (a wire twin so the auth package stays free of\nserialization/api deps).",
         "properties": {
           "admin": {
             "items": {
@@ -1765,7 +1765,7 @@
             "type": "string"
           },
           "serve_config_v2": {
-            "description": "The Serve application config (KubeRay `serveConfigV2`), passed\nthrough verbatim as a YAML string — Mobula does not interpret it.",
+            "description": "The Serve application config (KubeRay `serveConfigV2`), passed\nthrough verbatim as a YAML string — Bifrost does not interpret it.",
             "type": "string"
           },
           "upgrade": {
@@ -2024,8 +2024,8 @@
       "VersionInfo": {
         "properties": {
           "name": {
-            "description": "Always \"mobula\".",
-            "example": "mobula",
+            "description": "Always \"bifrost\".",
+            "example": "bifrost",
             "type": "string"
           },
           "version": {
@@ -2129,11 +2129,11 @@
     }
   },
   "info": {
-    "description": "FOSS control plane for Ray clusters. All endpoints take a Bearer JWT (OIDC). Note: the Ray Jobs API is NOT documented here — it is served by hostname, each registered cluster's hostname proxying Ray's own /api/jobs/ surface through the federating gateway. This spec covers Mobula's own control-plane routes.",
+    "description": "FOSS control plane for Ray clusters. All endpoints take a Bearer JWT (OIDC). Note: the Ray Jobs API is NOT documented here — it is served by hostname, each registered cluster's hostname proxying Ray's own /api/jobs/ surface through the federating gateway. This spec covers Bifrost's own control-plane routes.",
     "license": {
       "name": "Apache-2.0"
     },
-    "title": "Mobula",
+    "title": "Bifrost",
     "version": "0.0.1"
   },
   "openapi": "3.1.0",

@@ -43,9 +43,18 @@ oapi-codegen v2.8.0 (confirmed in `bifrost`'s ADR-0002 — direct OpenAPI 3.1
 generation works with no 3.0 downgrade fallback needed):
 
 ```
-go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest \
+go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0 \
   -generate types,std-http,strict-server -package api openapi.json
 ```
+
+## Identity
+
+The contract's `info` block and `VersionInfo` identity fields (`name`) are
+Bifrost's, not the Rust reference's: `info.title` is `"Bifrost"` and
+`VersionInfo.name` is always `"bifrost"`. Parity checks against the frozen
+mobula reference spec normalize the `info` block and these identity strings
+out before diffing — everything else in the contract is byte-for-byte the
+frozen shape.
 
 ## Layout
 
