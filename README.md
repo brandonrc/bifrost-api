@@ -84,17 +84,35 @@ SDKs are generated in CI (`.github/workflows/generate.yml`) with
 **openapi-generator v7.12.0** (Mustache templates, one config per language
 under `sdk/<lang>/`), on every push to `main` that touches `openapi.json`,
 `sdk/**`, or the workflow itself. Dev versioning is loose: SDKs publish
-`0.1.<run_number>` and consumers track `latest`.
+`0.1.<run_number>`.
 
 - TypeScript publishes to GitHub Packages npm (`@brandonrc` scope) on every
-  qualifying `main` push.
-- Python builds and validates (`python -m build`) on every run, but only
-  *publishes* (to PyPI) when `PYPI_API_TOKEN` is set. On a `main`-branch
-  push, a missing publish secret is a **hard failure** (`exit 1`), not a
-  silent skip — a `main` push is expected to be publishable, so a missing
-  secret there indicates a misconfigured repo rather than an intentional
-  dry run. Non-`main` runs (e.g. `workflow_dispatch` off a branch) still
-  build without publishing.
+  qualifying `main` push; consumers track `latest`. Auth is the ambient
+  `GITHUB_TOKEN` — no extra secret.
+- **Python distribution decision:** GitHub Packages has no native
+  pip-compatible registry (npm, Maven, NuGet, RubyGems, and Docker are
+  supported; PyPI is not — see
+  [github/roadmap#94](https://github.com/github/roadmap/issues/94)), and
+  `PYPI_API_TOKEN` is unprovisioned. `bifrost_client` therefore publishes
+  as a **GitHub Release asset** on every qualifying `main` push, using only
+  the ambient `GITHUB_TOKEN` (same auth pattern as the TypeScript job — no
+  new secret). Each publish creates release tag `python-v0.1.<run_number>`
+  in this repo with the built wheel and sdist attached. Consumers install
+  the exact pinned version directly from the release asset URL (this repo
+  is public, so no auth is needed to fetch it):
+
+  ```
+  pip install https://github.com/brandonrc/bifrost-api/releases/download/python-v0.1.<run_number>/bifrost_client-0.1.<run_number>-py3-none-any.whl
+  ```
+
+  Revisit PyPI (`PYPI_API_TOKEN`) if/when that secret is provisioned — the
+  build step (`python -m build`) already produces a PyPI-ready wheel/sdist,
+  so switching later is a publish-step swap, not a rebuild.
+- On a `main`-branch push, a missing publish secret (for either job) is a
+  **hard failure** (`exit 1`), not a silent skip — a `main` push is
+  expected to be publishable, so a missing secret there indicates a
+  misconfigured repo rather than an intentional dry run. Non-`main` runs
+  (e.g. `workflow_dispatch` off a branch) still build without publishing.
 - Each SDK build also produces a CycloneDX SBOM
   (`anchore/sbom-action@v0`) as a workflow artifact.
 

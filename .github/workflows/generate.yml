@@ -67,12 +67,15 @@ jobs:
           npm publish
 
   python:
-    # Gated to workflow_dispatch only: PYPI_API_TOKEN is unprovisioned, so a
-    # push-triggered run would hard-fail on every main push (see the
-    # fail-red publish step below). Restore `push` to this job's trigger
-    # once PYPI_API_TOKEN exists.
-    if: github.event_name == 'workflow_dispatch'
+    # Publishes to a GitHub Release (asset), not PyPI: GitHub Packages has
+    # no native pip-compatible registry, and PYPI_API_TOKEN is
+    # unprovisioned. A GitHub Release asset needs only the ambient
+    # GITHUB_TOKEN, mirroring the GITHUB_TOKEN-only auth the TypeScript job
+    # already uses for GitHub Packages npm. See README.md "SDK packages"
+    # for the consumer `pip install <wheel URL>` line.
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -98,18 +101,22 @@ jobs:
           path: build/python
           format: cyclonedx-json
           output-file: sbom-python-cyclonedx.json
-      - name: Publish to PyPI
+      - name: Publish to GitHub Releases
         working-directory: build/python
         env:
-          PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -z "$PYPI_TOKEN" ]; then
-            if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-              echo "::error::PYPI_API_TOKEN not set — cannot publish bifrost_client from a main-branch push." >&2
-              exit 1
-            fi
-            echo "::notice::PYPI_API_TOKEN not set (non-main run) — built but not published."
+          if [ "${{ github.ref }}" = "refs/heads/main" ] && [ -z "$GH_TOKEN" ]; then
+            echo "::error::GITHUB_TOKEN not available — cannot publish bifrost_client from a main-branch push." >&2
+            exit 1
+          fi
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::GH_TOKEN not set (non-main run) — built but not published."
             exit 0
           fi
-          pip install --quiet twine
-          twine upload -u __token__ -p "$PYPI_TOKEN" dist/*
+          VERSION="0.1.${GITHUB_RUN_NUMBER}"
+          TAG="python-v${VERSION}"
+          gh release create "$TAG" dist/*.whl dist/*.tar.gz \
+            --repo "${{ github.repository }}" \
+            --title "bifrost_client ${VERSION}" \
+            --notes "Python client SDK generated from openapi.json at ${{ github.sha }}."
