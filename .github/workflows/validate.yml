@@ -1,9 +1,15 @@
 name: Validate
 
-# Lints the spec on every push/PR. openapi.json is a frozen artifact (see
-# README for provenance) — this guards the SDK generators and any local
-# edits, and gives the repo a green/red signal on spec quality (Spectral +
-# Redocly).
+# Lints the spec on every push/PR. openapi.json is pushed here by bifrost's
+# sync-api.yml from bifrost/internal/api/openapi.json, the source of truth
+# (see README) — this guards the SDK generators against a bad push, and
+# gives the repo a green/red signal on spec quality (Spectral + Redocly).
+#
+# upstream-drift is advisory (continue-on-error): it compares the copy here
+# with bifrost main so a sync push that never landed is visible on this
+# side. It does not gate anything — the push itself is the gate, in
+# bifrost — and it is expected to differ briefly between a bifrost merge
+# and the sync run that follows it.
 on:
   push:
     branches: [main]
@@ -28,3 +34,24 @@ jobs:
         run: redocly lint openapi.json
       - name: Verify bundleable
         run: redocly bundle openapi.json -o /tmp/bundled.json
+
+  upstream-drift:
+    name: Upstream drift (advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout bifrost main (the source of truth)
+        uses: actions/checkout@v4
+        with:
+          repository: brandonrc/bifrost
+          ref: main
+          path: upstream
+      - name: Diff against bifrost/internal/api/openapi.json
+        run: |
+          if diff -u upstream/internal/api/openapi.json openapi.json; then
+            echo "openapi.json matches brandonrc/bifrost@main"
+          else
+            echo "::warning::openapi.json differs from brandonrc/bifrost@main — either a bifrost merge has not been synced yet, or a sync push failed. Check bifrost's sync-api.yml runs; do not edit the file here."
+            exit 1
+          fi
