@@ -1,66 +1,65 @@
 # bifrost-api
 
-**The frozen OpenAPI contract for [Bifrost](https://github.com/brandonrc/bifrost),
-plus generated client SDKs. Generated — do not hand-edit.**
+**The published OpenAPI contract for [Bifrost](https://github.com/brandonrc/bifrost),
+plus generated client SDKs. Pushed by CI — do not hand-edit.**
 
-Bifrost's API surface is **contract-first**: this repo holds the frozen v1
-contract, and the Go server (`github.com/brandonrc/bifrost`) generates its
-handler interfaces from this file — so the spec and the server cannot drift
-apart. `openapi.json` here is the authoritative point-in-time artifact, not
-a live mirror; when the server later takes over emitting this file, this
-repo's role switches to hosting that generated artifact and its SDKs.
+The source of truth for the contract is
+[`bifrost/internal/api/openapi.json`](https://github.com/brandonrc/bifrost/blob/main/internal/api/openapi.json)
+(bifrost ADR-0006). Bifrost's Go server is **spec-first** — oapi-codegen
+generates its strict-server handler interface and its Go client from that
+file, so a contract change and the handler that implements it land in the
+same bifrost PR, and CI there fails if the generated code does not match.
+`openapi.json` **here** is a downstream copy: bifrost's
+[`sync-api.yml`](https://github.com/brandonrc/bifrost/blob/main/.github/workflows/sync-api.yml)
+pushes it to `main` on every bifrost `main` push that touches the contract
+(committer `bifrost-ci`, message `chore: sync contract from bifrost@<sha>`),
+and that push is what triggers the SDK pipeline below.
 
-## Contract v1
+To change the contract, open a PR against `bifrost`, not this repo. A hand
+edit here is overwritten by the next sync.
 
-- **Shape:** OpenAPI 3.1.0, 47 operations across 36 paths, completeness
-  guarded by an exhaustive operation-set test on the producing side (see
-  `docs/adr/0002-openapi-codegen-result.md` in the `bifrost` repo for the
-  independent oapi-codegen check confirming the same counts against the
-  generated strict-server interface).
-- **Normalization:** the frozen file was run through `jq -S .` once for
-  stable, deterministic key ordering:
+## Contract
 
-  ```
-  jq -S . < openapi.source.json > openapi.json
-  ```
-
-- **YAML companion:** `openapi.yaml` is the same spec re-serialized from the
-  frozen JSON, for tools that prefer YAML. Generated with:
-
-  ```
-  ruby -rjson -ryaml -e 'File.write("openapi.yaml", JSON.parse(File.read("openapi.json")).to_yaml)'
-  ```
-
-  (Ruby's stdlib `json`/`yaml` were used in place of PyYAML, which wasn't
-  available in the environment this freeze was produced in; any JSON→YAML
-  conversion that preserves key order and doesn't rewrite values is
-  equivalent.)
+- **Shape:** OpenAPI 3.1.0. The operation set is whatever bifrost `main`
+  implements — bifrost's strict-server generation means every operation in
+  this file has a handler, and every handler an operation. Historically the
+  v1 file was a frozen export of the Rust reference (47 operations); that
+  count is no longer a property of this repo.
+- **Ordering:** bifrost keeps `openapi.json` with stable, sorted keys
+  (`jq -S .` style); the copy here is byte-for-byte what bifrost committed.
+- **YAML companion:** `openapi.yaml` is the same document re-serialized for
+  tools that prefer YAML. It is regenerated from the JSON by the sync
+  workflow on every push (PyYAML, `sort_keys=False`) and is never edited on
+  its own.
 
 ## Go server generation
 
-Bifrost's Go server generates directly from this frozen file with
-oapi-codegen v2.8.0 (confirmed in `bifrost`'s ADR-0002 — direct OpenAPI 3.1
-generation works with no 3.0 downgrade fallback needed):
+Bifrost's Go server generates directly from its copy of this file with
+oapi-codegen v2.8.0 (`bifrost`'s ADR-0002 — direct OpenAPI 3.1 generation
+works with no 3.0 downgrade fallback needed):
 
 ```
 go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0 \
   -generate types,std-http,strict-server -package api openapi.json
 ```
 
+The generated output is committed in bifrost and CI there regenerates and
+diffs it on every PR, so the contract and the server move together.
+
 ## Identity
 
 The contract's `info` block and `VersionInfo` identity fields (`name`) are
 Bifrost's, not the Rust reference's: `info.title` is `"Bifrost"` and
-`VersionInfo.name` is always `"bifrost"`. Parity checks against the frozen
-mobula reference spec normalize the `info` block and these identity strings
-out before diffing — everything else in the contract is byte-for-byte the
-frozen shape.
+`VersionInfo.name` is always `"bifrost"`. Parity checks against the mobula
+reference spec normalize the `info` block and these identity strings out
+before diffing; operations bifrost has added since the port are expected to
+show up in that diff as bifrost-only.
 
 ## Layout
 
 ```
-openapi.json         # the frozen spec (authoritative artifact)
-openapi.yaml          # same spec, YAML — for tools that prefer it
+openapi.json         # the contract — pushed from bifrost by sync-api.yml, never hand-edited
+openapi.yaml         # same document, YAML — regenerated by the same workflow
 .spectral.yaml        # Spectral lint ruleset
 redocly.yaml          # Redocly lint/docs config
 sdk/
@@ -118,7 +117,13 @@ under `sdk/<lang>/`), on every push to `main` that touches `openapi.json`,
 
 ## Pipelines
 
-- **`validate.yml`** — Spectral + Redocly lint the spec on every push/PR.
+- **`validate.yml`** — Spectral + Redocly lint the spec on every push/PR,
+  plus an advisory `upstream-drift` job (never red) that diffs `openapi.json`
+  against `brandonrc/bifrost@main` so a missed sync push is visible here.
+- **`sync-api.yml`** (in `bifrost`, not here) — the producer: copies
+  `internal/api/openapi.json` in, regenerates `openapi.yaml`, commits and
+  pushes to `main` when they differ. A missing push token is a hard failure
+  there, matching this repo's own no-silent-skip posture.
 - **`generate.yml`** — on spec/SDK change (or manual dispatch), regenerate
   each SDK, produce its SBOM, and publish where secrets allow.
 
@@ -126,6 +131,3 @@ under `sdk/<lang>/`), on every push to `main` that touches `openapi.json`,
 
 - Swap `bifrost-ui` to `@brandonrc/bifrost-client` once the first SDK
   publish lands.
-- Once the Go server emits its own `openapi.json`, wire a spec-sync workflow
-  so pushes to the server repo update this contract automatically (with a
-  diff-gated commit, failing red when the sync can't run).
