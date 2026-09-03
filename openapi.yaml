@@ -1,14 +1,16 @@
----
 components:
   schemas:
     AllocationSpec:
-      description: |-
-        A project's allocation within a pool (translates to a Kueue LocalQueue).
+      description: 'A project''s allocation within a pool (translates to a Kueue LocalQueue).
+
 
         `nominal` / `borrowing_limit` / `lending_limit` are reserved for a future
+
         per-project ClusterQueue layout (ADR-0010): in the v0 layout all
+
         allocations in a pool share one ClusterQueue, so these are recorded as
-        LocalQueue annotations rather than enforced quotas.
+
+        LocalQueue annotations rather than enforced quotas.'
       properties:
         borrowing_limit:
           additionalProperties:
@@ -84,10 +86,11 @@ components:
           minimum: 0
           type: integer
         principal:
-          description: |-
-            The principal the assignment applies to: a token `sub` (opaque
+          description: 'The principal the assignment applies to: a token `sub` (opaque
+
             Keycloak UUID) or a `preferred_username` — evaluation matches BOTH, so
-            human-friendly username grants take effect (#88).
+
+            human-friendly username grants take effect (#88).'
           type: string
         role:
           description: '"viewer" | "developer" | "operator" | "admin".'
@@ -102,27 +105,31 @@ components:
       - created_at
       type: object
     AuditDecision:
-      description: |-
-        Whether Bifrost allowed or refused the thing the event describes.
-        Serialized snake_case (`allow` / `deny`).
+      description: 'Whether Bifrost allowed or refused the thing the event describes.
+
+        Serialized snake_case (`allow` / `deny`).'
       enum:
       - allow
       - deny
       type: string
     AuditEvent:
-      description: |-
-        One audit-trail row (api-v1.md §5.9). Fields not applicable to the
+      description: 'One audit-trail row (api-v1.md §5.9). Fields not applicable to the
+
         emitting site are `None` (serialized `null`); `granted_roles` is empty.
 
+
         Decision policy (the audit subsystem): `deny` rows are emitted at
+
         the point of refusal (authn failures, authz denials, quota denials);
+
         gateway per-request rows are always `allow` — a request Bifrost refuses
-        never reaches the gateway, so its `deny` row comes from the refuser.
+
+        never reaches the gateway, so its `deny` row comes from the refuser.'
       properties:
         action:
-          description: |-
-            Control-plane mutation (`create_cluster`, `delete_pool`, …);
-            `null` on gateway rows.
+          description: 'Control-plane mutation (`create_cluster`, `delete_pool`, …);
+
+            `null` on gateway rows.'
           type:
           - string
           - 'null'
@@ -132,10 +139,9 @@ components:
           - string
           - 'null'
         decision:
-          "$ref": "#/components/schemas/AuditDecision"
+          $ref: '#/components/schemas/AuditDecision'
         granted_roles:
-          description: Roles the caller held (snake_case); authz denials only, else
-            `[]`.
+          description: Roles the caller held (snake_case); authz denials only, else `[]`.
           items:
             type: string
           type: array
@@ -157,16 +163,16 @@ components:
           - string
           - 'null'
         reason:
-          description: |-
-            Machine-readable refusal reason (`missing_token`, `invalid_token`,
-            `insufficient_permission`, `quota_exceeded`); `null` on allows.
+          description: 'Machine-readable refusal reason (`missing_token`, `invalid_token`,
+
+            `insufficient_permission`, `quota_exceeded`); `null` on allows.'
           type:
           - string
           - 'null'
         required:
           oneOf:
           - type: 'null'
-          - "$ref": "#/components/schemas/AuditRequired"
+          - $ref: '#/components/schemas/AuditRequired'
             description: The permission an authz denial was checked against.
         status:
           description: HTTP status of the outcome, when one is known.
@@ -176,8 +182,7 @@ components:
           - integer
           - 'null'
         subject:
-          description: Authenticated subject; `null` for authn failures (no identity
-            yet).
+          description: Authenticated subject; `null` for authn failures (no identity yet).
           type:
           - string
           - 'null'
@@ -191,14 +196,15 @@ components:
       - decision
       type: object
     AuditListResponse:
-      description: |-
-        Response of `GET /api/v1/audit`. This endpoint is the ONE list route
+      description: 'Response of `GET /api/v1/audit`. This endpoint is the ONE list route
+
         that wraps its items in an envelope — the cursor has to live somewhere
-        (api-v1.md §5.9).
+
+        (api-v1.md §5.9).'
       properties:
         items:
           items:
-            "$ref": "#/components/schemas/AuditEvent"
+            $ref: '#/components/schemas/AuditEvent'
           type: array
         next_cursor:
           description: Pass as `cursor` for the next (older) page; `null` at the end.
@@ -211,11 +217,13 @@ components:
       - items
       type: object
     AuditRequired:
-      description: |-
-        The (verb, target) permission an authorization decision was checked
-        against — mirrors the auth subsystem's permission/target vocabulary as lowercase
+      description: 'The (verb, target) permission an authorization decision was checked
+
+        against — mirrors the auth subsystem''s permission/target vocabulary as lowercase
+
         strings (`"write"`, `"cluster"`) so core stays free of auth types.
-        Present only on authz denials.
+
+        Present only on authz denials.'
       properties:
         action:
           description: e.g. "read" | "write" | "delete" | "admin".
@@ -231,16 +239,16 @@ components:
       description: Response of `GET /api/v1/audit/verify`.
       properties:
         events_checked:
-          description: |-
-            Rows that verified before the replay stopped (the whole window on
-            success; the rows before the broken one on failure).
+          description: 'Rows that verified before the replay stopped (the whole window on
+
+            success; the rows before the broken one on failure).'
           format: int64
           minimum: 0
           type: integer
         first_broken_seq:
-          description: |-
-            Seq of the first row whose stored `chain_hash` doesn't match the
-            replay; `null` when the window verifies clean.
+          description: 'Seq of the first row whose stored `chain_hash` doesn''t match the
+
+            replay; `null` when the window verifies clean.'
           format: int64
           minimum: 0
           type:
@@ -254,11 +262,13 @@ components:
       - events_checked
       type: object
     BudgetStatus:
-      description: |-
-        A configured project's time-windowed budget status (#77): the cap, what
-        has been consumed over the trailing window (ending at the report's `to`),
+      description: 'A configured project''s time-windowed budget status (#77): the cap, what
+
+        has been consumed over the trailing window (ending at the report''s `to`),
+
         and what remains. Distinct from `UsageGroup` — this reflects the
-        `[budgets]` policy, not the raw sample roll-up.
+
+        `[budgets]` policy, not the raw sample roll-up.'
       properties:
         consumed:
           additionalProperties:
@@ -269,9 +279,9 @@ components:
             type: string
           type: object
         exhausted:
-          description: |-
-            True once consumption has reached or passed the cap on any capped
-            resource — a create for this project would be 409'd.
+          description: 'True once consumption has reached or passed the cap on any capped
+
+            resource — a create for this project would be 409''d.'
           type: boolean
         limit:
           additionalProperties:
@@ -287,9 +297,9 @@ components:
           additionalProperties:
             format: double
             type: number
-          description: |-
-            resource → resource-hours remaining (`limit − consumed`, floored at 0)
-            for each capped resource.
+          description: 'resource → resource-hours remaining (`limit − consumed`, floored at 0)
+
+            for each capped resource.'
           propertyNames:
             type: string
           type: object
@@ -308,9 +318,9 @@ components:
       type: object
     BudgetView:
       additionalProperties:
-        description: |-
-          resource → resource-hours allowed over the window (`cpu` = core-hours,
-          `memory` = GiB-hours, `nvidia.com/gpu` = GPU-hours).
+        description: 'resource → resource-hours allowed over the window (`cpu` = core-hours,
+
+          `memory` = GiB-hours, `nvidia.com/gpu` = GPU-hours).'
         format: double
         type: number
       description: A configured budget as reported by the settings API.
@@ -324,15 +334,16 @@ components:
       - window_secs
       type: object
     ClusterEvent:
-      description: |-
-        One normalized Kubernetes Event about a cluster object (api-v1.md §5.8).
+      description: 'One normalized Kubernetes Event about a cluster object (api-v1.md §5.8).
+
         Fields are `Option` because the two Event schemas (core/v1 and
-        events.k8s.io/v1) name them differently and any of them may be absent.
+
+        events.k8s.io/v1) name them differently and any of them may be absent.'
       properties:
         count:
-          description: |-
-            How many times this event has fired (K8s collapses repeats). Defaults
-            to 1 when the source records no count.
+          description: 'How many times this event has fired (K8s collapses repeats). Defaults
+
+            to 1 when the source records no count.'
           format: int32
           minimum: 0
           type: integer
@@ -342,8 +353,7 @@ components:
           - string
           - 'null'
         last_seen:
-          description: Most recent occurrence (RFC3339); the field the list is sorted
-            by.
+          description: Most recent occurrence (RFC3339); the field the list is sorted by.
           type:
           - string
           - 'null'
@@ -358,8 +368,7 @@ components:
           - string
           - 'null'
         reason:
-          description: Short machine reason (`FailedScheduling`, `Pulled`, `BackOff`,
-            …).
+          description: Short machine reason (`FailedScheduling`, `Pulled`, `BackOff`, …).
           type:
           - string
           - 'null'
@@ -371,29 +380,30 @@ components:
       - count
       type: object
     ClusterEvents:
-      description: |-
-        Kubernetes Events for one cluster's objects (api-v1.md §5.8), newest first
-        and capped — the body of `GET /api/v1/clusters/{id}/events`.
+      description: 'Kubernetes Events for one cluster''s objects (api-v1.md §5.8), newest first
+
+        and capped — the body of `GET /api/v1/clusters/{id}/events`.'
       properties:
         cluster_id:
           description: The cluster id (RayCluster name).
           type: string
         events:
-          description: Normalized events, most-recent-first, capped (see the endpoint's
-            cap).
+          description: Normalized events, most-recent-first, capped (see the endpoint's cap).
           items:
-            "$ref": "#/components/schemas/ClusterEvent"
+            $ref: '#/components/schemas/ClusterEvent'
           type: array
       required:
       - cluster_id
       - events
       type: object
     ClusterLogs:
-      description: |-
-        A tail-capped pod log view for one cluster (api-v1.md §5.6, non-streaming
+      description: 'A tail-capped pod log view for one cluster (api-v1.md §5.6, non-streaming
+
         first cut) — the body of `GET /api/v1/clusters/{id}/logs`. WS streaming is
+
         the eventual design (Milestone C); this GET-tail form removes the
-        pending-backend stub now.
+
+        pending-backend stub now.'
       properties:
         cluster_id:
           description: The cluster id (RayCluster name).
@@ -404,14 +414,14 @@ components:
             type: string
           type: array
         pod:
-          description: |-
-            The pod these `lines` are from (the requested pod, or the head pod when
-            none was requested). Empty only when the cluster has no pods yet.
+          description: 'The pod these `lines` are from (the requested pod, or the head pod when
+
+            none was requested). Empty only when the cluster has no pods yet.'
           type: string
         pods:
-          description: |-
-            Names of the cluster's pods the caller may tail (head first), so the UI
-            can offer a pod selector.
+          description: 'Names of the cluster''s pods the caller may tail (head first), so the UI
+
+            can offer a pod selector.'
           items:
             type: string
           type: array
@@ -421,8 +431,7 @@ components:
           minimum: 0
           type: integer
         truncated:
-          description: "`true` when the tail was filled (there may be older lines
-            beyond it)."
+          description: '`true` when the tail was filled (there may be older lines beyond it).'
           type: boolean
       required:
       - cluster_id
@@ -433,12 +442,15 @@ components:
       - truncated
       type: object
     ClusterMetrics:
-      description: |-
-        Normalized cluster resource-usage summary (the body of
-        `GET /api/v1/clusters/{id}/metrics`), distilled from the Ray dashboard's
+      description: 'Normalized cluster resource-usage summary (the body of
+
+        `GET /api/v1/clusters/{id}/metrics`), distilled from the Ray dashboard''s
+
         autoscaler / load-metrics report. Every stat is `Option` because a cluster
+
         may not report GPUs, and an older/mismatched Ray may omit a field — the UI
-        renders a tile only for the stats present.
+
+        renders a tile only for the stats present.'
       properties:
         active_nodes:
           description: Active Ray nodes the autoscaler reports; `None` when unavailable.
@@ -453,7 +465,7 @@ components:
         cpu:
           oneOf:
           - type: 'null'
-          - "$ref": "#/components/schemas/ResourceStat"
+          - $ref: '#/components/schemas/ResourceStat'
             description: CPU cores used vs total across the Ray cluster.
         failed_nodes:
           description: Nodes the autoscaler marked failed; `None` when unavailable.
@@ -465,17 +477,17 @@ components:
         gpu:
           oneOf:
           - type: 'null'
-          - "$ref": "#/components/schemas/ResourceStat"
+          - $ref: '#/components/schemas/ResourceStat'
             description: GPU devices used vs total.
         memory:
           oneOf:
           - type: 'null'
-          - "$ref": "#/components/schemas/ResourceStat"
+          - $ref: '#/components/schemas/ResourceStat'
             description: Memory bytes used vs total.
         object_store_memory:
           oneOf:
           - type: 'null'
-          - "$ref": "#/components/schemas/ResourceStat"
+          - $ref: '#/components/schemas/ResourceStat'
             description: Object-store memory bytes used vs total.
         pending_nodes:
           description: Nodes pending launch; `None` when unavailable.
@@ -488,9 +500,9 @@ components:
       - cluster_id
       type: object
     ClusterNodes:
-      description: |-
-        Head + per-worker-group node breakdown for one cluster (api-v1.md §5.3),
-        the body of `GET /api/v1/clusters/{id}/nodes`.
+      description: 'Head + per-worker-group node breakdown for one cluster (api-v1.md §5.3),
+
+        the body of `GET /api/v1/clusters/{id}/nodes`.'
       properties:
         cluster_id:
           description: The cluster id (RayCluster name).
@@ -498,56 +510,72 @@ components:
         head:
           oneOf:
           - type: 'null'
-          - "$ref": "#/components/schemas/NodeView"
-            description: The head node; `None` if KubeRay has not created the head
-              pod yet.
+          - $ref: '#/components/schemas/NodeView'
+            description: The head node; `None` if KubeRay has not created the head pod yet.
         worker_groups:
           description: One entry per worker group, in the RayCluster spec's order.
           items:
-            "$ref": "#/components/schemas/WorkerGroupNodes"
+            $ref: '#/components/schemas/WorkerGroupNodes'
           type: array
       required:
       - cluster_id
       - worker_groups
       type: object
     ClusterSpec:
-      description: |-
-        Declarative spec for a managed cluster.
+      description: 'Declarative spec for a managed cluster.
+
 
         Historically Ray-only (fields mirror a RayCluster CR so the KubeRay
+
         provisioner stays a thin translation). Multi-engine adds [`Self::engine`];
+
         the head/scheduler + worker-group shape is generic to both engines. For
-        `engine = dask`, `ray_version` is unused (Dask's version is carried by
+
+        `engine = dask`, `ray_version` is unused (Dask''s version is carried by
+
         [`Self::image`]); it stays a required field only for back-compat with
-        stored Ray specs and existing clients.
+
+        stored Ray specs and existing clients.'
       properties:
         engine:
-          "$ref": "#/components/schemas/Engine"
-          description: |-
-            Which compute engine backs this cluster. `#[serde(default)]` = Ray, so
+          $ref: '#/components/schemas/Engine'
+          description: 'Which compute engine backs this cluster. `#[serde(default)]` = Ray, so
+
             every pre-multi-engine spec and every Ray client keeps working
-            untouched.
+
+            untouched.'
         head_cpu:
           type: string
         head_memory:
           type: string
         idle_timeout_secs:
-          description: |-
-            **Inactivity reap window** in seconds (#100): the cluster is reaped once
+          description: '**Inactivity reap window** in seconds (#100): the cluster is reaped once
+
             it has been *idle* — no job activity — for this long, so a busy cluster
+
             survives past it while a genuinely unused one is released. Distinct from
+
             [`Self::ttl_seconds`], which still caps absolute age independently:
+
             whichever fires first reaps the cluster.
 
+
             Activity is derived from the persisted job history (a running/recent
+
             gateway job keeps the cluster alive). **Limitation:** interactive Ray
+
             Client / Dask sessions submit no gateway jobs, so their activity is
+
             invisible to this signal — an interactive-only cluster looks idle from
+
             creation. For such sessions rely on [`Self::ttl_seconds`] or leave this
+
             unset. See `reconcile.rs` module docs.
 
+
             `#[serde(default)]` so specs persisted before this field — and any
-            client that omits it — keep the prior max-age-only behavior.
+
+            client that omits it — keep the prior max-age-only behavior.'
           format: int64
           minimum: 0
           type:
@@ -558,18 +586,27 @@ components:
         name:
           type: string
         owner:
-          description: |-
-            The authenticated owner of this cluster (tier-2 owned session
+          description: 'The authenticated owner of this cluster (tier-2 owned session
+
             clusters): the human identity that requested it — a
+
             `preferred_username` when the OIDC token carries one, else the `sub`.
+
             Set control-plane-side from the request identity (never trusted from
+
             the client body); `None` for clusters created without an owner (e.g.
+
             admin/service paths). When set it is stamped as the
+
             `bifrost.dev/owner` label on the RayCluster and its pods, and drives
+
             the per-owner Ray-client (`:10001`) ingress NetworkPolicy so only the
-            owner's notebook pod can reach the cluster. `#[serde(default)]` keeps
+
+            owner''s notebook pod can reach the cluster. `#[serde(default)]` keeps
+
             specs persisted before this field deserializable (they parse as
-            `None`).
+
+            `None`).'
           type:
           - string
           - 'null'
@@ -578,11 +615,13 @@ components:
         ray_version:
           type: string
         ttl_seconds:
-          description: |-
-            **Absolute max-age cap** in seconds: the cluster is reaped this long
+          description: '**Absolute max-age cap** in seconds: the cluster is reaped this long
+
             after creation regardless of activity. `None` disables the max-age
+
             reaper. (Despite the historical name, this is a wall-clock age cap, not
-            an inactivity window — see [`Self::idle_timeout_secs`] for that.)
+
+            an inactivity window — see [`Self::idle_timeout_secs`] for that.)'
           format: int64
           minimum: 0
           type:
@@ -590,7 +629,7 @@ components:
           - 'null'
         worker_groups:
           items:
-            "$ref": "#/components/schemas/WorkerGroup"
+            $ref: '#/components/schemas/WorkerGroup'
           type: array
       required:
       - name
@@ -615,15 +654,16 @@ components:
       - terminated
       type: string
     ClusterView:
-      description: |-
-        A cluster as the control plane sees it: desired spec metadata plus the
-        last observed state (reconstructed from the provisioner, ADR-0006).
+      description: 'A cluster as the control plane sees it: desired spec metadata plus the
+
+        last observed state (reconstructed from the provisioner, ADR-0006).'
       properties:
         condition:
-          description: |-
-            Drift/health alarm raised by the reconcile engine (ADR-0004, #41/#47):
+          description: 'Drift/health alarm raised by the reconcile engine (ADR-0004, #41/#47):
+
             "spec_drift" (out-of-band edit) or "degraded". `None` when converging
-            normally. Distinct from `observed_state`.
+
+            normally. Distinct from `observed_state`.'
           type:
           - string
           - 'null'
@@ -631,9 +671,9 @@ components:
           description: '"running" | "suspended" | "terminated" — the operator''s intent.'
           type: string
         engine:
-          description: |-
-            Which engine backs this cluster: "ray" | "dask" (multi-engine). Lets
-            GET /clusters surface a Ray and a Dask cluster side by side.
+          description: 'Which engine backs this cluster: "ray" | "dask" (multi-engine). Lets
+
+            GET /clusters surface a Ray and a Dask cluster side by side.'
           type: string
         est_max_hourly:
           description: Estimated $/hr at max (fully scaled) size.
@@ -648,8 +688,7 @@ components:
           - number
           - 'null'
         generation:
-          description: Bumps when the spec changes; drives the reconcile idempotency
-            key.
+          description: Bumps when the spec changes; drives the reconcile idempotency key.
           format: int64
           minimum: 0
           type: integer
@@ -681,11 +720,10 @@ components:
       description: Request body for creating/updating a managed cluster.
       properties:
         id:
-          description: Stable cluster id (also the gateway routing key / RayCluster
-            name).
+          description: Stable cluster id (also the gateway routing key / RayCluster name).
           type: string
         spec:
-          "$ref": "#/components/schemas/ClusterSpec"
+          $ref: '#/components/schemas/ClusterSpec'
       required:
       - id
       - spec
@@ -694,7 +732,7 @@ components:
       description: Request body for creating a pool.
       properties:
         spec:
-          "$ref": "#/components/schemas/PoolSpec"
+          $ref: '#/components/schemas/PoolSpec'
       required:
       - spec
       type: object
@@ -713,9 +751,9 @@ components:
       - expires_in_days
       type: object
     CreateTokenResponse:
-      description: |-
-        `POST /api/v1/auth/tokens` success body. The plaintext `token` is
-        returned ONLY here — store it now; it cannot be recovered.
+      description: '`POST /api/v1/auth/tokens` success body. The plaintext `token` is
+
+        returned ONLY here — store it now; it cannot be recovered.'
       properties:
         expires_at:
           description: Unix seconds.
@@ -738,12 +776,12 @@ components:
           - string
           - 'null'
         password:
-          description: |-
-            Minimum 8 characters; bcrypt-hashed at rest, never stored or
-            returned in plaintext.
+          description: 'Minimum 8 characters; bcrypt-hashed at rest, never stored or
+
+            returned in plaintext.'
           type: string
         role:
-          "$ref": "#/components/schemas/LocalRole"
+          $ref: '#/components/schemas/LocalRole'
         username:
           description: RFC 1123 subdomain (k8s-name-safe); unique.
           type: string
@@ -759,27 +797,31 @@ components:
           description: Stable service name (the RayService name).
           type: string
         spec:
-          "$ref": "#/components/schemas/ServiceSpec"
+          $ref: '#/components/schemas/ServiceSpec'
       required:
       - name
       - spec
       type: object
     Engine:
-      description: |-
-        The compute engine a cluster is provisioned on (multi-engine spike). The
+      description: 'The compute engine a cluster is provisioned on (multi-engine spike). The
+
         control plane is engine-neutral above the provisioner seam; this
+
         discriminator is what the reconciler and the provisioner router dispatch
+
         on. `Ray` is the default so specs persisted before multi-engine — and any
+
         client that omits the field — still deserialize as Ray clusters, exactly
-        as before.
+
+        as before.'
       enum:
       - ray
       - dask
       type: string
     FlavorSpec:
-      description: |-
-        A hardware flavor within a pool: node selection plus per-resource
-        nominal quota (K8s quantity strings, e.g. "4", "512Gi").
+      description: 'A hardware flavor within a pool: node selection plus per-resource
+
+        nominal quota (K8s quantity strings, e.g. "4", "512Gi").'
       properties:
         name:
           type: string
@@ -798,7 +840,7 @@ components:
           type: object
         taints:
           items:
-            "$ref": "#/components/schemas/TaintSpec"
+            $ref: '#/components/schemas/TaintSpec'
           type: array
       required:
       - name
@@ -807,23 +849,29 @@ components:
       - taints
       type: object
     GpuSharing:
-      description: |-
-        How a pool's GPUs may be shared between workloads (#58).
+      description: 'How a pool''s GPUs may be shared between workloads (#58).
+
 
         NVIDIA GPU time-slicing (and fractional `nvidia.com/gpu` requests via the
-        device plugin) shares one GPU's SMs across processes with no hardware
+
+        device plugin) shares one GPU''s SMs across processes with no hardware
+
         isolation — acceptable within one tenant, never across tenants. MIG is
+
         hardware partitioning and whole-GPU allocation needs no sharing at all,
+
         so both are isolation-safe. The tenant-isolation rule itself is enforced
-        by the policy package's GPU admission logic at admission time; this field is the per-pool
-        knob it evaluates.
+
+        by the policy package''s GPU admission logic at admission time; this field is the per-pool
+
+        knob it evaluates.'
       enum:
       - whole-gpu
       - mig
       - time-slice
       type: string
     IdentityResponse:
-      description: "`GET /api/v1/identity` response: the caller's resolved identity."
+      description: '`GET /api/v1/identity` response: the caller''s resolved identity.'
       properties:
         email:
           type:
@@ -876,11 +924,13 @@ components:
       - submitted_at
       type: object
     LocalRole:
-      description: |-
-        A local user's role (ADR-0011: roles are a column on the user, resolved
+      description: 'A local user''s role (ADR-0011: roles are a column on the user, resolved
+
         per request — no claim staleness). Stored as TEXT in `local_users.role`;
-        the vocabulary mirrors the auth subsystem's Role type (kept as a separate enum so
-        core never depends on the auth package).
+
+        the vocabulary mirrors the auth subsystem''s Role type (kept as a separate enum so
+
+        core never depends on the auth package).'
       enum:
       - viewer
       - developer
@@ -889,9 +939,9 @@ components:
       - auditor
       type: string
     LocalUserView:
-      description: |-
-        The public projection of a local user — everything EXCEPT the password
-        hash and the lockout internals that are nobody else's business.
+      description: 'The public projection of a local user — everything EXCEPT the password
+
+        hash and the lockout internals that are nobody else''s business.'
       properties:
         created_at:
           description: Unix seconds.
@@ -905,7 +955,7 @@ components:
           - string
           - 'null'
         role:
-          "$ref": "#/components/schemas/LocalRole"
+          $ref: '#/components/schemas/LocalRole'
         username:
           type: string
       required:
@@ -938,9 +988,9 @@ components:
       - password
       type: object
     LoginResponse:
-      description: |-
-        `POST /api/v1/auth/login` success body. `token` is an opaque
-        `bfr_…` bearer credential (ADR-0011: stored, never signed).
+      description: '`POST /api/v1/auth/login` success body. `token` is an opaque
+
+        `bfr_…` bearer credential (ADR-0011: stored, never signed).'
       properties:
         expires_at:
           description: Unix seconds after which the token no longer authenticates.
@@ -948,7 +998,7 @@ components:
           minimum: 0
           type: integer
         identity:
-          "$ref": "#/components/schemas/LoginIdentity"
+          $ref: '#/components/schemas/LoginIdentity'
         token:
           type: string
         token_type:
@@ -962,24 +1012,26 @@ components:
       - identity
       type: object
     NodeView:
-      description: |-
-        A single Ray node (head or one worker) as Kubernetes sees it: the pod
+      description: 'A single Ray node (head or one worker) as Kubernetes sees it: the pod
+
         KubeRay created for it, its scheduling/readiness, and the compute it
+
         requests. Fields are `Option` because a pod may not yet be scheduled
-        (no IP/host) and a quantity may be unparseable or unset.
+
+        (no IP/host) and a quantity may be unparseable or unset.'
       properties:
         cpu:
-          description: |-
-            CPU cores requested, summed across the pod's containers and parsed
-            from the K8s quantity (`500m` → 0.5). `None` when unset/unparseable.
+          description: 'CPU cores requested, summed across the pod''s containers and parsed
+
+            from the K8s quantity (`500m` → 0.5). `None` when unset/unparseable.'
           format: double
           type:
           - number
           - 'null'
         gpu:
-          description: |-
-            GPUs requested (`nvidia.com/gpu`), summed across containers. `None`
-            when the pod requests no GPU.
+          description: 'GPUs requested (`nvidia.com/gpu`), summed across containers. `None`
+
+            when the pod requests no GPU.'
           format: double
           type:
           - number
@@ -990,9 +1042,9 @@ components:
           - string
           - 'null'
         host:
-          description: |-
-            Kubernetes node the pod landed on (`spec.nodeName`); `None` before
-            scheduling.
+          description: 'Kubernetes node the pod landed on (`spec.nodeName`); `None` before
+
+            scheduling.'
           type:
           - string
           - 'null'
@@ -1000,9 +1052,9 @@ components:
           description: Whether this is the cluster's head node.
           type: boolean
         memory_bytes:
-          description: |-
-            Memory bytes requested, summed across the pod's containers (`2Gi` →
-            2147483648). `None` when unset/unparseable.
+          description: 'Memory bytes requested, summed across the pod''s containers (`2Gi` →
+
+            2147483648). `None` when unset/unparseable.'
           format: int64
           minimum: 0
           type:
@@ -1014,17 +1066,17 @@ components:
           - string
           - 'null'
         phase:
-          description: |-
-            Kubernetes pod phase: `Pending` | `Running` | `Succeeded` | `Failed` |
-            `Unknown` (verbatim from `status.phase`).
+          description: 'Kubernetes pod phase: `Pending` | `Running` | `Succeeded` | `Failed` |
+
+            `Unknown` (verbatim from `status.phase`).'
           type: string
         pod_name:
           description: The pod's name (`metadata.name`).
           type: string
         ready:
-          description: |-
-            Whether the pod's `Ready` condition is true. Distinct from `phase`: a
-            pod can be `Running` but not yet `Ready`.
+          description: 'Whether the pod''s `Ready` condition is true. Distinct from `phase`: a
+
+            pod can be `Running` but not yet `Ready`.'
           type: boolean
       required:
       - pod_name
@@ -1040,16 +1092,16 @@ components:
       - issuer
       type: object
     PolicyView:
-      description: |-
-        `GET /api/v1/settings/policy` response: the effective policy plus its
-        provenance.
+      description: '`GET /api/v1/settings/policy` response: the effective policy plus its
+
+        provenance.'
       properties:
         budgets:
           additionalProperties:
-            "$ref": "#/components/schemas/BudgetView"
-          description: |-
-            project → time-windowed compute budget (#77). Empty when none are
-            configured.
+            $ref: '#/components/schemas/BudgetView'
+          description: 'project → time-windowed compute budget (#77). Empty when none are
+
+            configured.'
           propertyNames:
             type: string
           type: object
@@ -1079,9 +1131,9 @@ components:
             type: string
           type: object
         source:
-          description: |-
-            "file" (the untouched `--policy` boot seed) | "store" (edited via
-            PUT) | "none" (no policy configured at all).
+          description: '"file" (the untouched `--policy` boot seed) | "store" (edited via
+
+            PUT) | "none" (no policy configured at all).'
           example: file
           type: string
       required:
@@ -1094,14 +1146,14 @@ components:
       description: 'A shared capacity pool: flavors + a cohort to borrow from (ADR-0010).'
       properties:
         cohort:
-          description: |-
-            Name of the Kueue cohort this pool's ClusterQueue joins for elastic
-            borrowing.
+          description: 'Name of the Kueue cohort this pool''s ClusterQueue joins for elastic
+
+            borrowing.'
           type: string
         elastic:
-          description: |-
-            Whether workloads in this pool may be elastically resized (Kueue
-            elastic jobs / Workload Slices).
+          description: 'Whether workloads in this pool may be elastically resized (Kueue
+
+            elastic jobs / Workload Slices).'
           type: boolean
         fair_sharing_weight:
           description: Kueue `spec.fairSharing.weight` for the pool's ClusterQueue.
@@ -1109,19 +1161,23 @@ components:
           type: number
         flavors:
           items:
-            "$ref": "#/components/schemas/FlavorSpec"
+            $ref: '#/components/schemas/FlavorSpec'
           type: array
         gpu_sharing:
           oneOf:
           - type: 'null'
-          - "$ref": "#/components/schemas/GpuSharing"
-            description: |-
-              GPU sharing mode for this pool (#58). `None` inherits the platform
+          - $ref: '#/components/schemas/GpuSharing'
+            description: 'GPU sharing mode for this pool (#58). `None` inherits the platform
+
               default (`[gpu] default_sharing` in the policy file, itself
+
               defaulting to `whole-gpu`). A pool shared by more than one project
+
               may not resolve to `time-slice` — enforced at admission by
-              the policy package's GPU admission logic, not here (core validates shape; tenancy is
-              known only at the API edge, where allocations live).
+
+              the policy package''s GPU admission logic, not here (core validates shape; tenancy is
+
+              known only at the API edge, where allocations live).'
         name:
           type: string
       required:
@@ -1132,12 +1188,15 @@ components:
       - elastic
       type: object
     PoolUsageView:
-      description: |-
-        Live point-in-time usage of one pool (Slice 4): built from the pool's
-        latest stored ClusterQueue/LocalQueue observation plus the spec's
+      description: 'Live point-in-time usage of one pool (Slice 4): built from the pool''s
+
+        latest stored ClusterQueue/LocalQueue observation plus the spec''s
+
         nominal quotas. NOT a timeseries — for history use `GET /api/v1/usage`.
+
         `projects` is the per-LocalQueue (per-project) attribution; empty when
-        the observation predates per-LQ status or none exists.
+
+        the observation predates per-LQ status or none exists.'
       properties:
         pool:
           type: string
@@ -1154,9 +1213,9 @@ components:
             type: string
           type: object
         sampled_at:
-          description: |-
-            When the observation was recorded (unix seconds); `null` until the
-            pool reconcile loop has observed this pool.
+          description: 'When the observation was recorded (unix seconds); `null` until the
+
+            pool reconcile loop has observed this pool.'
           format: int64
           minimum: 0
           type:
@@ -1164,7 +1223,7 @@ components:
           - 'null'
         utilization:
           additionalProperties:
-            "$ref": "#/components/schemas/ResourceUtilization"
+            $ref: '#/components/schemas/ResourceUtilization'
           propertyNames:
             type: string
           type: object
@@ -1174,9 +1233,9 @@ components:
       - projects
       type: object
     PoolView:
-      description: |-
-        A pool as the control plane serves it: the stored spec metadata plus
-        `total_nominal`, the per-resource sum of all flavors' nominal quotas.
+      description: 'A pool as the control plane serves it: the stored spec metadata plus
+
+        `total_nominal`, the per-resource sum of all flavors'' nominal quotas.'
       properties:
         cohort:
           type: string
@@ -1191,7 +1250,7 @@ components:
           type: number
         flavors:
           items:
-            "$ref": "#/components/schemas/FlavorSpec"
+            $ref: '#/components/schemas/FlavorSpec'
           type: array
         generation:
           description: Bumps when the spec changes (same convention as clusters).
@@ -1201,20 +1260,22 @@ components:
         gpu_sharing:
           oneOf:
           - type: 'null'
-          - "$ref": "#/components/schemas/GpuSharing"
-            description: |-
-              The pool's GPU sharing mode (#58); `null` = the platform default
-              (`[gpu] default_sharing`, itself defaulting to `whole-gpu`).
+          - $ref: '#/components/schemas/GpuSharing'
+            description: 'The pool''s GPU sharing mode (#58); `null` = the platform default
+
+              (`[gpu] default_sharing`, itself defaulting to `whole-gpu`).'
         name:
           type: string
         total_nominal:
           additionalProperties:
             type: string
-          description: |-
-            Resource key → summed nominal quota across flavors, as a string.
+          description: 'Resource key → summed nominal quota across flavors, as a string.
+
             A resource key whose quantity fails to parse on ANY flavor is
+
             omitted entirely (a partial sum would misreport capacity); the
-            failure is logged. Display math only — the spec stays authoritative.
+
+            failure is logged. Display math only — the spec stays authoritative.'
           propertyNames:
             type: string
           type: object
@@ -1229,9 +1290,9 @@ components:
       - total_nominal
       type: object
     ProvidersResponse:
-      description: |-
-        Which auth providers this deployment offers (login-page metadata; not
-        sensitive — the endpoint is public by design).
+      description: 'Which auth providers this deployment offers (login-page metadata; not
+
+        sensitive — the endpoint is public by design).'
       properties:
         local:
           description: Local username/password auth is enabled (ADR-0011).
@@ -1239,16 +1300,17 @@ components:
         oidc:
           oneOf:
           - type: 'null'
-          - "$ref": "#/components/schemas/OidcProviderInfo"
+          - $ref: '#/components/schemas/OidcProviderInfo'
             description: OIDC configuration, when a validator is configured.
       required:
       - local
       type: object
     PutAllocation:
-      description: |-
-        Request body for putting an allocation: `AllocationSpec` minus
+      description: 'Request body for putting an allocation: `AllocationSpec` minus
+
         `pool`/`project`, which come from the path. If the body still carries
-        them, they must match the path or the request is rejected.
+
+        them, they must match the path or the request is rejected.'
       properties:
         borrowing_limit:
           additionalProperties:
@@ -1285,12 +1347,15 @@ components:
       - lending_limit
       type: object
     RayJobSummary:
-      description: |-
-        A Ray job normalized to a stable Bifrost shape (api-v1.md §5.6). Every
-        field is optional: Ray's own records vary by version and by whether the
-        job has started/finished. `status` is Ray's vocabulary verbatim
+      description: 'A Ray job normalized to a stable Bifrost shape (api-v1.md §5.6). Every
+
+        field is optional: Ray''s own records vary by version and by whether the
+
+        job has started/finished. `status` is Ray''s vocabulary verbatim
+
         (`PENDING | RUNNING | SUCCEEDED | FAILED | STOPPED`) — not snake_cased,
-        per §5.7. `start_time`/`end_time` are Ray's unix-millis timestamps.
+
+        per §5.7. `start_time`/`end_time` are Ray''s unix-millis timestamps.'
       properties:
         end_time:
           description: Ray's `end_time` (unix millis); `None` while the job runs.
@@ -1328,10 +1393,11 @@ components:
           - 'null'
       type: object
     RegistryEntryView:
-      description: |-
-        A gateway routing entry as the control plane may show it: where a
+      description: 'A gateway routing entry as the control plane may show it: where a
+
         cluster is exposed and where its dashboard head lives, but never the
-        token itself (ADR-0003, security issue #4).
+
+        token itself (ADR-0003, security issue #4).'
       properties:
         api_base_url:
           type: string
@@ -1345,11 +1411,12 @@ components:
         validation:
           oneOf:
           - type: 'null'
-          - "$ref": "#/components/schemas/RegistryValidation"
-            description: |-
-              Reserved for per-entry validation/reachability checks. Always null
+          - $ref: '#/components/schemas/RegistryValidation'
+            description: 'Reserved for per-entry validation/reachability checks. Always null
+
               today: registry validation is fail-fast at startup, so every served
-              entry is valid by construction.
+
+              entry is valid by construction.'
       required:
       - id
       - hostname
@@ -1373,12 +1440,15 @@ components:
       - ok
       type: object
     ResourceStat:
-      description: |-
-        A single resource's capacity, and its used amount when known. `used`/
-        `total` are in the resource's natural unit: CPU in cores, GPU in device
+      description: 'A single resource''s capacity, and its used amount when known. `used`/
+
+        `total` are in the resource''s natural unit: CPU in cores, GPU in device
+
         count, memory in bytes. `used` is `None` when the cluster does not report
+
         live utilization (e.g. a non-autoscaling cluster whose Ray dashboard has
-        no load-metrics report) — the tile then shows capacity only.
+
+        no load-metrics report) — the tile then shows capacity only.'
       properties:
         total:
           format: double
@@ -1392,12 +1462,15 @@ components:
       - total
       type: object
     ResourceUtilization:
-      description: |-
-        One resource's live utilization within a pool: `allocated` is the Kueue
+      description: 'One resource''s live utilization within a pool: `allocated` is the Kueue
+
         reservation-ledger total (summed across flavors from the latest
+
         ClusterQueue observation), `nominal` the summed flavor quotas from the
+
         spec, `pct` = allocated / nominal × 100 (0 when nominal is 0 — a
-        percentage of nothing is undefined, and 0 keeps the type non-optional).
+
+        percentage of nothing is undefined, and 0 keeps the type non-optional).'
       properties:
         allocated:
           format: double
@@ -1414,10 +1487,11 @@ components:
       - pct
       type: object
     RoleMappingsView:
-      description: |-
-        Group→role mappings from the OIDC auth config; shape mirrors
-        the auth subsystem's role-mapping type (a wire twin so the auth package stays free of
-        serialization/api deps).
+      description: 'Group→role mappings from the OIDC auth config; shape mirrors
+
+        the auth subsystem''s role-mapping type (a wire twin so the auth package stays free of
+
+        serialization/api deps).'
       properties:
         admin:
           items:
@@ -1447,10 +1521,11 @@ components:
       - auditor
       type: object
     RolesResponse:
-      description: |-
-        `GET /api/v1/access/roles` response. `mappings` is null when no OIDC
+      description: '`GET /api/v1/access/roles` response. `mappings` is null when no OIDC
+
         validator is configured (local-auth or dev mode): group→role mappings
-        are meaningless there — local users carry their role as a column.
+
+        are meaningless there — local users carry their role as a column.'
       properties:
         editable:
           description: Always false in v1 — editing stays in the config file + restart.
@@ -1458,11 +1533,11 @@ components:
         mappings:
           oneOf:
           - type: 'null'
-          - "$ref": "#/components/schemas/RoleMappingsView"
+          - $ref: '#/components/schemas/RoleMappingsView'
         source:
-          description: |-
-            "file" (mappings from the OIDC auth config) or "local" (no OIDC
-            validator; roles live on the local user rows).
+          description: '"file" (mappings from the OIDC auth config) or "local" (no OIDC
+
+            validator; roles live on the local user rows).'
           example: file
           type: string
       required:
@@ -1485,20 +1560,20 @@ components:
         ray_version:
           type: string
         serve_config_v2:
-          description: |-
-            The Serve application config (KubeRay `serveConfigV2`), passed
-            through verbatim as a YAML string — Bifrost does not interpret it.
+          description: 'The Serve application config (KubeRay `serveConfigV2`), passed
+
+            through verbatim as a YAML string — Bifrost does not interpret it.'
           type: string
         upgrade:
-          "$ref": "#/components/schemas/UpgradeStrategy"
+          $ref: '#/components/schemas/UpgradeStrategy'
         worker_cpu:
           type: string
         worker_memory:
           type: string
         worker_replicas:
-          description: |-
-            Fixed worker replicas backing the service (autoscaling of Serve
-            deployments is Ray Serve's own concern).
+          description: 'Fixed worker replicas backing the service (autoscaling of Serve
+
+            deployments is Ray Serve''s own concern).'
           format: int32
           minimum: 0
           type: integer
@@ -1519,8 +1594,7 @@ components:
         name:
           type: string
         state:
-          description: 'Observed lifecycle state: provisioning | running | updating
-            | ...'
+          description: 'Observed lifecycle state: provisioning | running | updating | ...'
           type: string
         url:
           description: External Serve endpoint base URL, when ready.
@@ -1532,10 +1606,11 @@ components:
       - state
       type: object
     TaintSpec:
-      description: |-
-        A Kubernetes taint on a flavor's nodes. `effect` is e.g. "NoSchedule";
-        validated non-empty here (the set of legal effects is Kubernetes', not
-        ours).
+      description: 'A Kubernetes taint on a flavor''s nodes. `effect` is e.g. "NoSchedule";
+
+        validated non-empty here (the set of legal effects is Kubernetes'', not
+
+        ours).'
       properties:
         effect:
           type: string
@@ -1549,17 +1624,18 @@ components:
       - effect
       type: object
     UpdatePolicy:
-      description: |-
-        Request body for `PUT /api/v1/settings/policy`. Section-replace
+      description: 'Request body for `PUT /api/v1/settings/policy`. Section-replace
+
         semantics: a present key replaces that whole section (`prices: null`
+
         clears the price sheet; `quotas: {}` clears all quotas); an absent key
-        leaves that section untouched.
+
+        leaves that section untouched.'
       properties:
         budgets:
           additionalProperties:
-            "$ref": "#/components/schemas/BudgetView"
-          description: Present replaces the whole budget map (`{}` clears all budgets)
-            (#77).
+            $ref: '#/components/schemas/BudgetView'
+          description: Present replaces the whole budget map (`{}` clears all budgets) (#77).
           propertyNames:
             type: string
           type:
@@ -1604,7 +1680,7 @@ components:
         role:
           oneOf:
           - type: 'null'
-          - "$ref": "#/components/schemas/LocalRole"
+          - $ref: '#/components/schemas/LocalRole'
       type: object
     UpgradeStrategy:
       description: How to roll out a new version of a service.
@@ -1657,12 +1733,13 @@ components:
       description: Response of `GET /api/v1/usage`.
       properties:
         budgets:
-          description: |-
-            Time-windowed budget status per configured project (#77). Empty when
+          description: 'Time-windowed budget status per configured project (#77). Empty when
+
             no `[budgets]` are configured. When the report is filtered to one
-            `project`, only that project's budget appears.
+
+            `project`, only that project''s budget appears.'
           items:
-            "$ref": "#/components/schemas/BudgetStatus"
+            $ref: '#/components/schemas/BudgetStatus'
           type: array
         from:
           format: int64
@@ -1670,7 +1747,7 @@ components:
           type: integer
         groups:
           items:
-            "$ref": "#/components/schemas/UsageGroup"
+            $ref: '#/components/schemas/UsageGroup'
           type: array
         to:
           format: int64
@@ -1697,12 +1774,14 @@ components:
       - version
       type: object
     WorkerGroup:
-      description: |-
-        A homogeneous group of Ray worker nodes.
+      description: 'A homogeneous group of Ray worker nodes.
+
 
         Autoscaling in v0 is actuated exclusively through these replica bounds,
+
         which translate to KubeRay worker-group fields — never by reading demand
-        from GCS (ADR-0002).
+
+        from GCS (ADR-0002).'
       properties:
         cpu:
           type: string
@@ -1738,10 +1817,11 @@ components:
       description: One worker group and its nodes (api-v1.md §5.3).
       properties:
         desired:
-          description: |-
-            Desired replicas: the group's `replicas` field, or `minReplicas` when
+          description: 'Desired replicas: the group''s `replicas` field, or `minReplicas` when
+
             autoscaling leaves `replicas` unmanaged (ADR-0007). Per-group desired
-            counts are not in the RayCluster status, so this is the spec's answer.
+
+            counts are not in the RayCluster status, so this is the spec''s answer.'
           format: int32
           minimum: 0
           type: integer
@@ -1751,11 +1831,10 @@ components:
         nodes:
           description: The group's nodes.
           items:
-            "$ref": "#/components/schemas/NodeView"
+            $ref: '#/components/schemas/NodeView'
           type: array
         ready:
-          description: 'Ready replicas: pods in this group that are `Running` and
-            `Ready`.'
+          description: 'Ready replicas: pods in this group that are `Running` and `Ready`.'
           format: int32
           minimum: 0
           type: integer
@@ -1771,17 +1850,14 @@ components:
       scheme: bearer
       type: http
 info:
-  description: 'FOSS control plane for Ray clusters. All endpoints take a Bearer JWT
-    (OIDC). Note: the Ray Jobs API is NOT documented here — it is served by hostname,
-    each registered cluster''s hostname proxying Ray''s own /api/jobs/ surface through
-    the federating gateway. This spec covers Bifrost''s own control-plane routes.'
+  description: 'FOSS control plane for Ray clusters. All endpoints take a Bearer JWT (OIDC). Note: the Ray Jobs API is NOT documented here — it is served by hostname, each registered cluster''s hostname proxying Ray''s own /api/jobs/ surface through the federating gateway. This spec covers Bifrost''s own control-plane routes.'
   license:
     name: Apache-2.0
   title: Bifrost
   version: 0.0.1
 openapi: 3.1.0
 paths:
-  "/api/v1/access/assignments":
+  /api/v1/access/assignments:
     get:
       operationId: list_assignments
       responses:
@@ -1790,7 +1866,7 @@ paths:
             application/json:
               schema:
                 items:
-                  "$ref": "#/components/schemas/AssignmentView"
+                  $ref: '#/components/schemas/AssignmentView'
                 type: array
           description: All role assignments
         '401':
@@ -1804,7 +1880,7 @@ paths:
       summary: List every scoped role assignment, Admin-only.
       tags:
       - access
-  "/api/v1/access/assignments/{principal}":
+  /api/v1/access/assignments/{principal}:
     delete:
       operationId: delete_assignment
       parameters:
@@ -1843,8 +1919,7 @@ paths:
     put:
       operationId: upsert_assignment
       parameters:
-      - description: 'The principal to bind: a token `sub` (Keycloak UUID) or a `preferred_username`
-          — both are matched at evaluation (#88)'
+      - description: 'The principal to bind: a token `sub` (Keycloak UUID) or a `preferred_username` — both are matched at evaluation (#88)'
         in: path
         name: principal
         required: true
@@ -1854,14 +1929,14 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/UpsertAssignment"
+              $ref: '#/components/schemas/UpsertAssignment'
         required: true
       responses:
         '200':
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/AssignmentView"
+                $ref: '#/components/schemas/AssignmentView'
           description: Assignment stored
         '400':
           description: Unknown role or invalid scope grammar
@@ -1873,12 +1948,12 @@ paths:
           description: No store configured
       security:
       - bearer: []
-      summary: |-
-        Create or replace one assignment, Admin-only. The role and scope grammar
-        are validated here — the store is dumb persistence.
+      summary: 'Create or replace one assignment, Admin-only. The role and scope grammar
+
+        are validated here — the store is dumb persistence.'
       tags:
       - access
-  "/api/v1/access/roles":
+  /api/v1/access/roles:
     get:
       operationId: list_roles
       responses:
@@ -1886,7 +1961,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/RolesResponse"
+                $ref: '#/components/schemas/RolesResponse'
           description: Role mappings and their source
         '401':
           description: No/invalid token
@@ -1894,14 +1969,16 @@ paths:
           description: Admin only — access-control surface (api-v1.md §2.2)
       security:
       - bearer: []
-      summary: |-
-        Effective role mappings for the access page. Admin-only. v1 is
+      summary: 'Effective role mappings for the access page. Admin-only. v1 is
+
         read-only: with an OIDC validator the mappings come from the auth
+
         config file; without one (local auth) `mappings` is null and roles are
-        managed per-user via `/api/v1/auth/users`.
+
+        managed per-user via `/api/v1/auth/users`.'
       tags:
       - access
-  "/api/v1/audit":
+  /api/v1/audit:
     get:
       operationId: list_audit_events
       parameters:
@@ -1915,9 +1992,9 @@ paths:
           type:
           - integer
           - 'null'
-      - description: |-
-          Only rows with `seq` strictly before this value (from a previous
-          response's `next_cursor`).
+      - description: 'Only rows with `seq` strictly before this value (from a previous
+
+          response''s `next_cursor`).'
         in: query
         name: cursor
         required: false
@@ -1989,14 +2066,14 @@ paths:
           type:
           - integer
           - 'null'
-      - description: "`allow` or `deny`."
+      - description: '`allow` or `deny`.'
         in: query
         name: decision
         required: false
         schema:
           oneOf:
           - type: 'null'
-          - "$ref": "#/components/schemas/AuditDecision"
+          - $ref: '#/components/schemas/AuditDecision'
       - description: Exact reason match (e.g. `insufficient_permission`).
         in: query
         name: reason
@@ -2005,7 +2082,7 @@ paths:
           type:
           - string
           - 'null'
-      - description: "`csv` exports the page as `text/csv`; anything else is a 400."
+      - description: '`csv` exports the page as `text/csv`; anything else is a 400.'
         in: query
         name: format
         required: false
@@ -2018,9 +2095,8 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/AuditListResponse"
-          description: Audit events, newest first. `?format=csv` returns text/csv
-            instead.
+                $ref: '#/components/schemas/AuditListResponse'
+          description: Audit events, newest first. `?format=csv` returns text/csv instead.
         '400':
           description: Bad query (e.g. from > to, unknown format)
         '401':
@@ -2032,14 +2108,15 @@ paths:
       summary: List the persisted audit trail, Admin/Auditor-only (api-v1.md §5.9).
       tags:
       - audit
-  "/api/v1/audit/verify":
+  /api/v1/audit/verify:
     get:
       operationId: verify_audit_trail
       parameters:
-      - description: |-
-          First `seq` to check (default 1 — the whole trail from genesis).
-          The window chains from the newest preceding row's stored hash, so a
-          mid-trail window verifies against the same head it was written with.
+      - description: 'First `seq` to check (default 1 — the whole trail from genesis).
+
+          The window chains from the newest preceding row''s stored hash, so a
+
+          mid-trail window verifies against the same head it was written with.'
         in: query
         name: from_seq
         required: false
@@ -2049,9 +2126,9 @@ paths:
           type:
           - integer
           - 'null'
-      - description: |-
-          Max rows to replay (default 100_000, clamped to 1_000_000). Trails
-          larger than one window verify in successive `from_seq` windows.
+      - description: 'Max rows to replay (default 100_000, clamped to 1_000_000). Trails
+
+          larger than one window verify in successive `from_seq` windows.'
         in: query
         name: limit
         required: false
@@ -2066,7 +2143,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/AuditVerifyResponse"
+                $ref: '#/components/schemas/AuditVerifyResponse'
           description: Chain replay result
         '401':
           description: No/invalid token
@@ -2077,31 +2154,30 @@ paths:
       summary: Replay the audit hash chain over a window, Admin/Auditor-only (#59).
       tags:
       - audit
-  "/api/v1/auth/login":
+  /api/v1/auth/login:
     post:
       operationId: login
       requestBody:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/LoginRequest"
+              $ref: '#/components/schemas/LoginRequest'
         required: true
       responses:
         '200':
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/LoginResponse"
+                $ref: '#/components/schemas/LoginResponse'
           description: Logged in; opaque bearer token returned
         '401':
-          description: Invalid credentials (identical body for unknown user, wrong
-            password, locked, or disabled)
-      summary: |-
-        Username/password login (ADR-0011). Public (allowlisted); rate-limited
-        by bcrypt cost and the 5-strikes/5-minute account lockout.
+          description: Invalid credentials (identical body for unknown user, wrong password, locked, or disabled)
+      summary: 'Username/password login (ADR-0011). Public (allowlisted); rate-limited
+
+        by bcrypt cost and the 5-strikes/5-minute account lockout.'
       tags:
       - auth
-  "/api/v1/auth/logout":
+  /api/v1/auth/logout:
     post:
       operationId: logout
       responses:
@@ -2111,12 +2187,12 @@ paths:
           description: No/invalid token
       security:
       - bearer: []
-      summary: |-
-        Log out: if the caller authenticated with a PAT, revoke it; otherwise a
-        204 no-op (JWTs are stateless — there is nothing server-side to kill).
+      summary: 'Log out: if the caller authenticated with a PAT, revoke it; otherwise a
+
+        204 no-op (JWTs are stateless — there is nothing server-side to kill).'
       tags:
       - auth
-  "/api/v1/auth/providers":
+  /api/v1/auth/providers:
     get:
       operationId: providers
       responses:
@@ -2124,12 +2200,12 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ProvidersResponse"
+                $ref: '#/components/schemas/ProvidersResponse'
           description: Configured auth providers
       summary: 'Login-page metadata: which providers are configured. Public by design.'
       tags:
       - auth
-  "/api/v1/auth/tokens":
+  /api/v1/auth/tokens:
     get:
       operationId: list_tokens
       responses:
@@ -2138,7 +2214,7 @@ paths:
             application/json:
               schema:
                 items:
-                  "$ref": "#/components/schemas/ApiTokenView"
+                  $ref: '#/components/schemas/ApiTokenView'
                 type: array
           description: The caller's tokens, newest first
         '401':
@@ -2154,14 +2230,14 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/CreateTokenRequest"
+              $ref: '#/components/schemas/CreateTokenRequest'
         required: true
       responses:
         '201':
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/CreateTokenResponse"
+                $ref: '#/components/schemas/CreateTokenResponse'
           description: Token created; plaintext returned once
         '400':
           description: expires_in_days out of range
@@ -2169,12 +2245,12 @@ paths:
           description: No/invalid token
       security:
       - bearer: []
-      summary: |-
-        Mint a personal access token for the caller (ADR-0011). Any
-        authenticated identity; the plaintext is shown once.
+      summary: 'Mint a personal access token for the caller (ADR-0011). Any
+
+        authenticated identity; the plaintext is shown once.'
       tags:
       - auth
-  "/api/v1/auth/tokens/{prefix}":
+  /api/v1/auth/tokens/{prefix}:
     delete:
       operationId: revoke_token
       parameters:
@@ -2193,12 +2269,12 @@ paths:
           description: No such token for this caller
       security:
       - bearer: []
-      summary: |-
-        Revoke one of the caller's own tokens. Someone else's token (or a
-        nonexistent prefix) is a 404 — ownership can't be probed.
+      summary: 'Revoke one of the caller''s own tokens. Someone else''s token (or a
+
+        nonexistent prefix) is a 404 — ownership can''t be probed.'
       tags:
       - auth
-  "/api/v1/auth/users":
+  /api/v1/auth/users:
     get:
       operationId: list_users
       responses:
@@ -2207,7 +2283,7 @@ paths:
             application/json:
               schema:
                 items:
-                  "$ref": "#/components/schemas/LocalUserView"
+                  $ref: '#/components/schemas/LocalUserView'
                 type: array
           description: All local users, ordered by username
         '401':
@@ -2216,9 +2292,9 @@ paths:
           description: Admin only
       security:
       - bearer: []
-      summary: |-
-        List all local users. Admin-only; hashes never serialize
-        ([`LocalUserView`]).
+      summary: 'List all local users. Admin-only; hashes never serialize
+
+        ([`LocalUserView`]).'
       tags:
       - auth
     post:
@@ -2227,14 +2303,14 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/CreateUserRequest"
+              $ref: '#/components/schemas/CreateUserRequest'
         required: true
       responses:
         '201':
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/LocalUserView"
+                $ref: '#/components/schemas/LocalUserView'
           description: User created
         '400':
           description: Invalid username (RFC 1123) or password under 8 chars
@@ -2246,12 +2322,12 @@ paths:
           description: Username already taken
       security:
       - bearer: []
-      summary: |-
-        Create a local user. Admin-only. 201 with the wire-safe view; 400 on a
-        bad username/short password; 409 when the username is taken.
+      summary: 'Create a local user. Admin-only. 201 with the wire-safe view; 400 on a
+
+        bad username/short password; 409 when the username is taken.'
       tags:
       - auth
-  "/api/v1/auth/users/{username}":
+  /api/v1/auth/users/{username}:
     put:
       operationId: update_user
       parameters:
@@ -2265,14 +2341,14 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/UpdateUserRequest"
+              $ref: '#/components/schemas/UpdateUserRequest'
         required: true
       responses:
         '200':
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/LocalUserView"
+                $ref: '#/components/schemas/LocalUserView'
           description: User updated
         '400':
           description: Password under 8 chars
@@ -2284,13 +2360,14 @@ paths:
           description: No such user
       security:
       - bearer: []
-      summary: |-
-        Update a local user: role, disabled flag, and/or password. Admin-only;
+      summary: 'Update a local user: role, disabled flag, and/or password. Admin-only;
+
         404 for an unknown user. Changing your OWN role/disabled is allowed in
-        v0 (no footgun guard) but is audit-logged loudly.
+
+        v0 (no footgun guard) but is audit-logged loudly.'
       tags:
       - auth
-  "/api/v1/clusters":
+  /api/v1/clusters:
     get:
       operationId: list_clusters
       responses:
@@ -2299,7 +2376,7 @@ paths:
             application/json:
               schema:
                 items:
-                  "$ref": "#/components/schemas/ClusterView"
+                  $ref: '#/components/schemas/ClusterView'
                 type: array
           description: All managed clusters
         '401':
@@ -2316,14 +2393,13 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/CreateCluster"
+              $ref: '#/components/schemas/CreateCluster'
         required: true
       responses:
         '201':
           description: Desired state recorded; reconciler will converge
         '400':
-          description: Invalid spec (bad quantity, min>max), or GPU tenant-isolation
-            violation (fractional GPU in a multi-tenant pool)
+          description: Invalid spec (bad quantity, min>max), or GPU tenant-isolation violation (fractional GPU in a multi-tenant pool)
         '401':
           description: No/invalid token
         '403':
@@ -2336,7 +2412,7 @@ paths:
       - bearer: []
       tags:
       - clusters
-  "/api/v1/clusters/{id}":
+  /api/v1/clusters/{id}:
     delete:
       operationId: delete_cluster
       parameters:
@@ -2346,8 +2422,7 @@ paths:
         required: true
         schema:
           type: string
-      - description: Hard-delete the store row (tombstone purge); only when already
-          terminated and observed gone
+      - description: Hard-delete the store row (tombstone purge); only when already terminated and observed gone
         in: query
         name: purge
         required: false
@@ -2384,7 +2459,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ClusterView"
+                $ref: '#/components/schemas/ClusterView'
           description: The cluster
         '401':
           description: No/invalid token
@@ -2396,7 +2471,7 @@ paths:
       - bearer: []
       tags:
       - clusters
-  "/api/v1/clusters/{id}/events":
+  /api/v1/clusters/{id}/events:
     get:
       operationId: cluster_events
       parameters:
@@ -2411,7 +2486,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ClusterEvents"
+                $ref: '#/components/schemas/ClusterEvents'
           description: Kubernetes Events for the cluster's objects, newest first (capped)
         '401':
           description: No/invalid token
@@ -2425,7 +2500,7 @@ paths:
       - bearer: []
       tags:
       - clusters
-  "/api/v1/clusters/{id}/jobs":
+  /api/v1/clusters/{id}/jobs:
     get:
       operationId: cluster_jobs
       parameters:
@@ -2441,7 +2516,7 @@ paths:
             application/json:
               schema:
                 items:
-                  "$ref": "#/components/schemas/RayJobSummary"
+                  $ref: '#/components/schemas/RayJobSummary'
                 type: array
           description: Normalized list of Ray jobs on the cluster
         '401':
@@ -2456,7 +2531,7 @@ paths:
       - bearer: []
       tags:
       - clusters
-  "/api/v1/clusters/{id}/logs":
+  /api/v1/clusters/{id}/logs:
     get:
       operationId: cluster_logs
       parameters:
@@ -2466,8 +2541,7 @@ paths:
         required: true
         schema:
           type: string
-      - description: Pod to tail (one of the cluster's pods); defaults to the head
-          pod.
+      - description: Pod to tail (one of the cluster's pods); defaults to the head pod.
         in: query
         name: node
         required: false
@@ -2489,7 +2563,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ClusterLogs"
+                $ref: '#/components/schemas/ClusterLogs'
           description: Recent (tail-capped) pod logs plus the list of tailable pods
         '401':
           description: No/invalid token
@@ -2503,7 +2577,7 @@ paths:
       - bearer: []
       tags:
       - clusters
-  "/api/v1/clusters/{id}/metrics":
+  /api/v1/clusters/{id}/metrics:
     get:
       operationId: cluster_metrics
       parameters:
@@ -2518,9 +2592,8 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ClusterMetrics"
-          description: Normalized cluster resource-usage summary (CPU/GPU/mem used
-            vs total + node counts)
+                $ref: '#/components/schemas/ClusterMetrics'
+          description: Normalized cluster resource-usage summary (CPU/GPU/mem used vs total + node counts)
         '401':
           description: No/invalid token
         '403':
@@ -2533,7 +2606,7 @@ paths:
       - bearer: []
       tags:
       - clusters
-  "/api/v1/clusters/{id}/nodes":
+  /api/v1/clusters/{id}/nodes:
     get:
       operationId: cluster_nodes
       parameters:
@@ -2548,7 +2621,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ClusterNodes"
+                $ref: '#/components/schemas/ClusterNodes'
           description: Head + per-worker-group node breakdown, sourced from Kubernetes
         '401':
           description: No/invalid token
@@ -2562,7 +2635,7 @@ paths:
       - bearer: []
       tags:
       - clusters
-  "/api/v1/clusters/{id}/resume":
+  /api/v1/clusters/{id}/resume:
     post:
       operationId: resume_cluster
       parameters:
@@ -2574,8 +2647,7 @@ paths:
           type: string
       responses:
         '202':
-          description: Desired state set back to running; reconciler re-provisions
-            (suspend=false)
+          description: Desired state set back to running; reconciler re-provisions (suspend=false)
         '401':
           description: No/invalid token
         '403':
@@ -2583,13 +2655,12 @@ paths:
         '404':
           description: No such cluster
         '409':
-          description: Illegal state transition, or the cluster's project is queue-assigned
-            (Kueue owns suspend)
+          description: Illegal state transition, or the cluster's project is queue-assigned (Kueue owns suspend)
       security:
       - bearer: []
       tags:
       - clusters
-  "/api/v1/clusters/{id}/suspend":
+  /api/v1/clusters/{id}/suspend:
     post:
       operationId: suspend_cluster
       parameters:
@@ -2601,8 +2672,7 @@ paths:
           type: string
       responses:
         '202':
-          description: Desired state set to suspended; reconciler releases compute
-            (spec.suspend=true)
+          description: Desired state set to suspended; reconciler releases compute (spec.suspend=true)
         '401':
           description: No/invalid token
         '403':
@@ -2610,13 +2680,12 @@ paths:
         '404':
           description: No such cluster
         '409':
-          description: Illegal state transition, or the cluster's project is queue-assigned
-            (Kueue owns suspend)
+          description: Illegal state transition, or the cluster's project is queue-assigned (Kueue owns suspend)
       security:
       - bearer: []
       tags:
       - clusters
-  "/api/v1/identity":
+  /api/v1/identity:
     get:
       operationId: identity
       responses:
@@ -2624,20 +2693,22 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/IdentityResponse"
+                $ref: '#/components/schemas/IdentityResponse'
           description: The caller's identity (the dev identity when auth is disabled)
         '401':
           description: No/invalid token (only when auth is configured)
       security:
       - bearer: []
-      summary: |-
-        "Who am I": the resolved identity for any authenticated caller. In dev
+      summary: '"Who am I": the resolved identity for any authenticated caller. In dev
+
         mode (no validator AND no local auth) the auth middleware attaches no
+
         identity, and this returns the specced dev identity so the
-        unauthenticated dev loop renders the full console.
+
+        unauthenticated dev loop renders the full console.'
       tags:
       - access
-  "/api/v1/jobs":
+  /api/v1/jobs:
     get:
       operationId: list_jobs
       responses:
@@ -2646,7 +2717,7 @@ paths:
             application/json:
               schema:
                 items:
-                  "$ref": "#/components/schemas/JobView"
+                  $ref: '#/components/schemas/JobView'
                 type: array
           description: Persistent job history, newest first
         '401':
@@ -2657,7 +2728,7 @@ paths:
       - bearer: []
       tags:
       - jobs
-  "/api/v1/metrics":
+  /api/v1/metrics:
     get:
       operationId: metrics
       responses:
@@ -2675,7 +2746,7 @@ paths:
       - bearer: []
       tags:
       - usage
-  "/api/v1/pools":
+  /api/v1/pools:
     get:
       operationId: list_pools
       responses:
@@ -2684,7 +2755,7 @@ paths:
             application/json:
               schema:
                 items:
-                  "$ref": "#/components/schemas/PoolView"
+                  $ref: '#/components/schemas/PoolView'
                 type: array
           description: All capacity pools
         '401':
@@ -2701,7 +2772,7 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/CreatePool"
+              $ref: '#/components/schemas/CreatePool'
         required: true
       responses:
         '201':
@@ -2713,13 +2784,12 @@ paths:
         '403':
           description: Missing Write on pool (Admin only)
         '409':
-          description: Pool already exists (create-only in v0; spec update lands with
-            a later PATCH)
+          description: Pool already exists (create-only in v0; spec update lands with a later PATCH)
       security:
       - bearer: []
       tags:
       - pools
-  "/api/v1/pools/{name}":
+  /api/v1/pools/{name}:
     delete:
       operationId: delete_pool
       parameters:
@@ -2756,7 +2826,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/PoolView"
+                $ref: '#/components/schemas/PoolView'
           description: The pool
         '401':
           description: No/invalid token
@@ -2768,7 +2838,7 @@ paths:
       - bearer: []
       tags:
       - pools
-  "/api/v1/pools/{name}/allocations":
+  /api/v1/pools/{name}/allocations:
     get:
       operationId: list_allocations
       parameters:
@@ -2784,7 +2854,7 @@ paths:
             application/json:
               schema:
                 items:
-                  "$ref": "#/components/schemas/AllocationSpec"
+                  $ref: '#/components/schemas/AllocationSpec'
                 type: array
           description: The pool's allocations
         '401':
@@ -2795,7 +2865,7 @@ paths:
       - bearer: []
       tags:
       - pools
-  "/api/v1/pools/{name}/allocations/{project}":
+  /api/v1/pools/{name}/allocations/{project}:
     delete:
       operationId: delete_allocation
       parameters:
@@ -2843,14 +2913,13 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/PutAllocation"
+              $ref: '#/components/schemas/PutAllocation'
         required: true
       responses:
         '200':
           description: Allocation recorded
         '400':
-          description: Invalid allocation, body pool/project mismatches the path,
-            or GPU tenant-isolation violation (time-slice pool shared by >1 project)
+          description: Invalid allocation, body pool/project mismatches the path, or GPU tenant-isolation violation (time-slice pool shared by >1 project)
         '401':
           description: No/invalid token
         '403':
@@ -2861,7 +2930,7 @@ paths:
       - bearer: []
       tags:
       - pools
-  "/api/v1/pools/{name}/usage":
+  /api/v1/pools/{name}/usage:
     get:
       operationId: pool_usage
       parameters:
@@ -2876,7 +2945,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/PoolUsageView"
+                $ref: '#/components/schemas/PoolUsageView'
           description: Live pool utilization (latest observation)
         '401':
           description: No/invalid token
@@ -2888,7 +2957,7 @@ paths:
       - bearer: []
       tags:
       - pools
-  "/api/v1/registry/clusters":
+  /api/v1/registry/clusters:
     get:
       operationId: list_registry
       responses:
@@ -2897,7 +2966,7 @@ paths:
             application/json:
               schema:
                 items:
-                  "$ref": "#/components/schemas/RegistryEntryView"
+                  $ref: '#/components/schemas/RegistryEntryView'
                 type: array
           description: The gateway's routing table
         '401':
@@ -2908,7 +2977,7 @@ paths:
       - bearer: []
       tags:
       - registry
-  "/api/v1/services":
+  /api/v1/services:
     get:
       operationId: list_services
       responses:
@@ -2917,7 +2986,7 @@ paths:
             application/json:
               schema:
                 items:
-                  "$ref": "#/components/schemas/ServiceView"
+                  $ref: '#/components/schemas/ServiceView'
                 type: array
           description: All managed services
         '401':
@@ -2934,7 +3003,7 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/DeployService"
+              $ref: '#/components/schemas/DeployService'
         required: true
       responses:
         '202':
@@ -2949,7 +3018,7 @@ paths:
       - bearer: []
       tags:
       - services
-  "/api/v1/services/{name}":
+  /api/v1/services/{name}:
     delete:
       operationId: delete_service
       parameters:
@@ -2984,7 +3053,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/ServiceView"
+                $ref: '#/components/schemas/ServiceView'
           description: The service
         '401':
           description: No/invalid token
@@ -2996,7 +3065,7 @@ paths:
       - bearer: []
       tags:
       - services
-  "/api/v1/settings/policy":
+  /api/v1/settings/policy:
     get:
       operationId: get_policy
       responses:
@@ -3004,7 +3073,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/PolicyView"
+                $ref: '#/components/schemas/PolicyView'
           description: The effective policy and its provenance
         '401':
           description: No/invalid token
@@ -3012,10 +3081,11 @@ paths:
           description: Admin only — governance is platform configuration
       security:
       - bearer: []
-      summary: |-
-        The effective governance policy. Admin-only: quotas and prices are
+      summary: 'The effective governance policy. Admin-only: quotas and prices are
+
         platform configuration (api-v1.md §2.2), classified with `Target::Cluster`
-        like the registry/audit surfaces.
+
+        like the registry/audit surfaces.'
       tags:
       - settings
     put:
@@ -3024,14 +3094,14 @@ paths:
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/UpdatePolicy"
+              $ref: '#/components/schemas/UpdatePolicy'
         required: true
       responses:
         '200':
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/PolicyView"
+                $ref: '#/components/schemas/PolicyView'
           description: The policy after the update (source is now "store")
         '400':
           description: Negative or non-finite price/quota value
@@ -3041,14 +3111,16 @@ paths:
           description: Admin only — governance is platform configuration
       security:
       - bearer: []
-      summary: |-
-        Replace sections of the governance policy. Admin-only. Edits take effect
+      summary: 'Replace sections of the governance policy. Admin-only. Edits take effect
+
         on the very next request — quota admission, cost estimates, and the usage
+
         roll-up all read the store per request. Emits an `update_policy` audit
-        event on success.
+
+        event on success.'
       tags:
       - settings
-  "/api/v1/usage":
+  /api/v1/usage:
     get:
       operationId: usage_report
       parameters:
@@ -3093,7 +3165,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/UsageReport"
+                $ref: '#/components/schemas/UsageReport'
           description: Resource-hours (and cost when priced) by project and pool
         '400':
           description: from must be before to
@@ -3105,7 +3177,7 @@ paths:
       - bearer: []
       tags:
       - usage
-  "/api/v1/version":
+  /api/v1/version:
     get:
       operationId: version
       responses:
@@ -3113,12 +3185,12 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/VersionInfo"
+                $ref: '#/components/schemas/VersionInfo'
           description: Name and semver
       summary: Control-plane identity and version.
       tags:
       - system
-  "/healthz":
+  /healthz:
     get:
       operationId: healthz
       responses:
@@ -3134,45 +3206,21 @@ paths:
 tags:
 - description: Health and version probes.
   name: system
-- description: Cluster lifecycle. Reads need any authenticated role; create/terminate
-    need Write on the cluster target (Operator or Admin). Mounted only when the lifecycle
-    controller is enabled (`serve --kuberay-namespace`).
+- description: Cluster lifecycle. Reads need any authenticated role; create/terminate need Write on the cluster target (Operator or Admin). Mounted only when the lifecycle controller is enabled (`serve --kuberay-namespace`).
   name: clusters
-- description: Ray Serve services (RayService). Deploy/update/delete need Write on
-    the service target (Developer or Admin — deploying is code); reads are open to
-    any authenticated role. KubeRay handles zero-downtime canary rollout.
+- description: Ray Serve services (RayService). Deploy/update/delete need Write on the service target (Developer or Admin — deploying is code); reads are open to any authenticated role. KubeRay handles zero-downtime canary rollout.
   name: services
-- description: 'Capacity pools and per-project allocations (ADR-0010): platform configuration,
-    not app lifecycle. Reads need any authenticated role; create/delete/allocation
-    mutations are Admin-only. Mounted only when a store is configured.'
+- description: 'Capacity pools and per-project allocations (ADR-0010): platform configuration, not app lifecycle. Reads need any authenticated role; create/delete/allocation mutations are Admin-only. Mounted only when a store is configured.'
   name: pools
-- description: 'Usage metering (Slice 4): resource-hours reports and the Prometheus
-    gauge over the metered samples. Reads need Read on the cluster target (Viewer+)
-    — consumption reporting is cluster data, not pool topology. Mounted only when
-    a store is configured.'
+- description: 'Usage metering (Slice 4): resource-hours reports and the Prometheus gauge over the metered samples. Reads need Read on the cluster target (Viewer+) — consumption reporting is cluster data, not pool topology. Mounted only when a store is configured.'
   name: usage
-- description: 'Governance policy management (api-v1.md §5.16): the effective price
-    sheet and per-project quotas. Admin-only. The `--policy` file is the boot-time
-    default; the store row wins once edited via PUT, and every consumer (quota admission,
-    cost estimates, usage roll-up) reads the store per request, so edits apply without
-    a restart. Mounted only when a store is configured.'
+- description: 'Governance policy management (api-v1.md §5.16): the effective price sheet and per-project quotas. Admin-only. The `--policy` file is the boot-time default; the store row wins once edited via PUT, and every consumer (quota admission, cost estimates, usage roll-up) reads the store per request, so edits apply without a restart. Mounted only when a store is configured.'
   name: settings
-- description: 'The job gateway''s routing table (ADR-0002). Admin-only: it is the
-    credential-routing table. Static config today; dynamic registration of managed
-    clusters is a follow-up.'
+- description: 'The job gateway''s routing table (ADR-0002). Admin-only: it is the credential-routing table. Static config today; dynamic registration of managed clusters is a follow-up.'
   name: registry
-- description: 'The persisted audit trail (api-v1.md §5.9): every authn/authz decision,
-    mutation, and proxied gateway request, newest-first with seq-cursor pagination
-    and CSV export. Rows are hash-chained for tamper-evidence (#59); `audit/verify`
-    replays the chain. Reads need Read on the audit target — Admin or Auditor — and
-    are themselves audited (`audit_read` rows). Mounted only when a store is configured.'
+- description: 'The persisted audit trail (api-v1.md §5.9): every authn/authz decision, mutation, and proxied gateway request, newest-first with seq-cursor pagination and CSV export. Rows are hash-chained for tamper-evidence (#59); `audit/verify` replays the chain. Reads need Read on the audit target — Admin or Auditor — and are themselves audited (`audit_read` rows). Mounted only when a store is configured.'
   name: audit
-- description: 'Local auth (ADR-0011): username/password login issuing opaque (unsigned)
-    bearer tokens, personal access token management, provider metadata, and Admin-only
-    local user management. `login` and `providers` are public; token routes are owner-scoped;
-    user routes are Admin-only. Mounted only with `serve --local-auth` (except `providers`).'
+- description: 'Local auth (ADR-0011): username/password login issuing opaque (unsigned) bearer tokens, personal access token management, provider metadata, and Admin-only local user management. `login` and `providers` are public; token routes are owner-scoped; user routes are Admin-only. Mounted only with `serve --local-auth` (except `providers`).'
   name: auth
-- description: 'Identity & access (api-v1.md §5.8): `identity` is ''who am I'' for
-    any authenticated caller (the dev identity when auth is disabled); `access/roles`
-    is the Admin-only read of the effective role mappings. Mounted unconditionally.'
+- description: 'Identity & access (api-v1.md §5.8): `identity` is ''who am I'' for any authenticated caller (the dev identity when auth is disabled); `access/roles` is the Admin-only read of the effective role mappings. Mounted unconditionally.'
   name: access
