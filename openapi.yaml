@@ -927,10 +927,27 @@ components:
           type: array
         subject:
           type: string
+        projects:
+          description: 'The projects the caller holds scoped grants in, from group-derived
+
+            project roles and stored assignments alike, sorted by name.
+
+
+            Distinct from `roles`, which lists the caller''s *global* roles: a global
+
+            operator may act in every project and this list can name none, so a
+
+            client that finds it empty should read `roles` before concluding the
+
+            caller may do nothing.'
+          items:
+            $ref: '#/components/schemas/ProjectGrant'
+          type: array
       required:
       - subject
       - groups
       - roles
+      - projects
       type: object
     JobView:
       description: A job in the persistent, cross-cluster history (Phase 3, spec §5.5).
@@ -2184,6 +2201,29 @@ components:
       - ready
       - nodes
       type: object
+    ProjectGrant:
+      description: 'One project the caller holds a scoped grant in, and the roles held
+
+        there. A client that has to name a project — the JupyterLab extension
+
+        starting a cluster, say — reads this rather than guessing a default.'
+      properties:
+        name:
+          description: The project's name, as `ClusterSpec.project` takes it.
+          type: string
+        roles:
+          description: 'Snake_case role names held *in this project*: "viewer", "developer",
+
+            "operator", "admin". A caller needs "operator" (or "admin") to create
+
+            or stop a cluster there.'
+          items:
+            type: string
+          type: array
+      required:
+      - name
+      - roles
+      type: object
   securitySchemes:
     bearer:
       bearerFormat: JWT
@@ -2194,7 +2234,7 @@ info:
   license:
     name: Apache-2.0
   title: Bifrost
-  version: 0.2.0
+  version: 0.3.0
 openapi: 3.1.0
 paths:
   /api/v1/access/assignments:
