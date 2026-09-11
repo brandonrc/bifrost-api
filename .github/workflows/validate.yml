@@ -44,14 +44,14 @@ jobs:
       - name: Checkout bifrost main (the source of truth)
         uses: actions/checkout@v4
         with:
-          repository: brandonrc/bifrost
+          repository: bifrost-compute/bifrost
           ref: main
           path: upstream
       - name: Diff against bifrost/internal/api/openapi.json
         run: |
           if diff -u upstream/internal/api/openapi.json openapi.json; then
-            echo "openapi.json matches brandonrc/bifrost@main"
+            echo "openapi.json matches bifrost-compute/bifrost@main"
           else
-            echo "::warning::openapi.json differs from brandonrc/bifrost@main — either a bifrost merge has not been synced yet, or a sync push failed. Check bifrost's sync-api.yml runs; do not edit the file here."
+            echo "::warning::openapi.json differs from bifrost-compute/bifrost@main — either a bifrost merge has not been synced yet, or a sync push failed. Check bifrost's sync-api.yml runs; do not edit the file here."
             exit 1
           fi

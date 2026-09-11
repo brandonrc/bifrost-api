@@ -1,16 +1,16 @@
 # bifrost-api
 
-**The published OpenAPI contract for [Bifrost](https://github.com/brandonrc/bifrost),
+**The published OpenAPI contract for [Bifrost](https://github.com/bifrost-compute/bifrost),
 plus generated client SDKs. Pushed by CI — do not hand-edit.**
 
 The source of truth for the contract is
-[`bifrost/internal/api/openapi.json`](https://github.com/brandonrc/bifrost/blob/main/internal/api/openapi.json)
+[`bifrost/internal/api/openapi.json`](https://github.com/bifrost-compute/bifrost/blob/main/internal/api/openapi.json)
 (bifrost ADR-0006). Bifrost's Go server is **spec-first** — oapi-codegen
 generates its strict-server handler interface and its Go client from that
 file, so a contract change and the handler that implements it land in the
 same bifrost PR, and CI there fails if the generated code does not match.
 `openapi.json` **here** is a downstream copy: bifrost's
-[`sync-api.yml`](https://github.com/brandonrc/bifrost/blob/main/.github/workflows/sync-api.yml)
+[`sync-api.yml`](https://github.com/bifrost-compute/bifrost/blob/main/.github/workflows/sync-api.yml)
 pushes it to `main` on every bifrost `main` push that touches the contract
 (committer `bifrost-ci`, message `chore: sync contract from bifrost@<sha>`),
 and that push is what triggers the SDK pipeline below.
@@ -76,7 +76,7 @@ Nothing generated is committed.
 
 | Language   | Package                     | Generator config              |
 |------------|------------------------------|--------------------------------|
-| TypeScript | `@brandonrc/bifrost-client`  | `sdk/typescript/config.yaml`   |
+| TypeScript | `@bifrost-compute/bifrost-client`  | `sdk/typescript/config.yaml`   |
 | Python     | `bifrost_client`             | `sdk/python/config.yaml`       |
 
 SDKs are generated in CI (`.github/workflows/generate.yml`) with
@@ -85,7 +85,7 @@ under `sdk/<lang>/`), on every push to `main` that touches `openapi.json`,
 `sdk/**`, or the workflow itself. Dev versioning is loose: SDKs publish
 `0.1.<run_number>`.
 
-- TypeScript publishes to GitHub Packages npm (`@brandonrc` scope) on every
+- TypeScript publishes to GitHub Packages npm (`@bifrost-compute` scope) on every
   qualifying `main` push; consumers track `latest`. Auth is the ambient
   `GITHUB_TOKEN` — no extra secret.
 - **Python distribution decision:** GitHub Packages has no native
@@ -101,7 +101,7 @@ under `sdk/<lang>/`), on every push to `main` that touches `openapi.json`,
   is public, so no auth is needed to fetch it):
 
   ```
-  pip install https://github.com/brandonrc/bifrost-api/releases/download/python-v0.1.<run_number>/bifrost_client-0.1.<run_number>-py3-none-any.whl
+  pip install https://github.com/bifrost-compute/bifrost-api/releases/download/python-v0.1.<run_number>/bifrost_client-0.1.<run_number>-py3-none-any.whl
   ```
 
   Revisit PyPI (`PYPI_API_TOKEN`) if/when that secret is provisioned — the
@@ -119,7 +119,7 @@ under `sdk/<lang>/`), on every push to `main` that touches `openapi.json`,
 
 - **`validate.yml`** — Spectral + Redocly lint the spec on every push/PR,
   plus an advisory `upstream-drift` job (never red) that diffs `openapi.json`
-  against `brandonrc/bifrost@main` so a missed sync push is visible here.
+  against `bifrost-compute/bifrost@main` so a missed sync push is visible here.
 - **`sync-api.yml`** (in `bifrost`, not here) — the producer: copies
   `internal/api/openapi.json` in, regenerates `openapi.yaml`, commits and
   pushes to `main` when they differ. A missing push token is a hard failure
@@ -129,5 +129,5 @@ under `sdk/<lang>/`), on every push to `main` that touches `openapi.json`,
 
 ## TODO
 
-- Swap `bifrost-ui` to `@brandonrc/bifrost-client` once the first SDK
+- Swap `bifrost-ui` to `@bifrost-compute/bifrost-client` once the first SDK
   publish lands.

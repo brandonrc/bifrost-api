@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: "22"
           registry-url: "https://npm.pkg.github.com"
-          scope: "@brandonrc"
+          scope: "@bifrost-compute"
       - name: Generate TS SDK
         run: |
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/local" \
@@ -56,7 +56,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ] && [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "::error::GITHUB_TOKEN not available — cannot publish @brandonrc/bifrost-client from a main-branch push." >&2
+            echo "::error::GITHUB_TOKEN not available — cannot publish @bifrost-compute/bifrost-client from a main-branch push." >&2
             exit 1
           fi
           if [ -z "$NODE_AUTH_TOKEN" ]; then
